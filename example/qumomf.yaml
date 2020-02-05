@@ -1,0 +1,45 @@
+qumomf:
+    port: ':1488'
+
+tarantool:
+    connect_timeout: '1s'
+    request_timeout: '1s'
+
+shards:
+    1:
+        - name: 'shard_1_m'
+          addr: 'shard_1_m.example'
+          priority: 42
+          uuid: 'some_uuid'
+          master: true
+
+        - name: 'shard_1_s_1'
+          addr: 'shard_1_s_1.example'
+          priority: 4
+          uuid: 'some_uuid_1'
+          master: false
+
+        - name: 'shard_1_s_2'
+          addr: 'shard_1_s_2.example'
+          priority: 0
+          uuid: 'some_uuid_2'
+          master: false
+
+    2:
+        - name: 'shard_2_m'
+          addr: 'shard_2_m.example'
+          priority: 42
+          uuid: 'some_uuid_3'
+          master: true
+
+        - name: 'shard_2_s_1'
+          addr: 'shard_2_s_1.example'
+          priority: 4
+          uuid: 'some_uuid_4'
+          master: false
+
+        - name: 'shard_2_s_2'
+          addr: 'shard_2_s_2.example'
+          priority: 0
+          uuid: 'some_uuid_5'
+          master: false
