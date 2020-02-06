@@ -16,7 +16,8 @@ type Config struct {
 		ConnectTimeout time.Duration `yaml:"connect_timeout"`
 		RequestTimeout time.Duration `yaml:"request_timeout"`
 	} `yaml:"tarantool"`
-	Shards map[string][]ShardConfig `yaml:"shards"`
+	Shards  map[string][]ShardConfig `yaml:"shards"`
+	Routers []ShardConfig            `yaml:"routers"`
 }
 
 type ShardConfig struct {

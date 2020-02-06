@@ -43,3 +43,14 @@ shards:
           priority: 0
           uuid: 'some_uuid_5'
           master: false
+routers:
+    - name: 'router_1'
+      addr: 'router_1.example'
+      priority: 0
+      uuid: 'some_router_uuid'
+
+    - name: 'router_2'
+      addr: 'router_2.example'
+      priority: 0
+      uuid: 'some_router_uuid1'
+
