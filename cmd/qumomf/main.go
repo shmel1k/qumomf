@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/shmel1k/qumomf/internal/config"
+	"github.com/shmel1k/qumomf/internal/tarantool"
 )
 
 var (
@@ -17,6 +18,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	tarantool.SetupConnection(tarantool.ShardConfig{})
 
 	log.Println(cfg)
 }

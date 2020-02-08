@@ -6,51 +6,67 @@ tarantool:
     request_timeout: '1s'
 
 shards:
-    1:
+    uuid_uuid1:
         - name: 'shard_1_m'
           addr: 'shard_1_m.example'
+          user: 'guest'
+          password: ''
           priority: 42
           uuid: 'some_uuid'
           master: true
 
         - name: 'shard_1_s_1'
           addr: 'shard_1_s_1.example'
+          user: 'guest'
+          password: ''
           priority: 4
           uuid: 'some_uuid_1'
           master: false
 
         - name: 'shard_1_s_2'
           addr: 'shard_1_s_2.example'
+          user: 'guest'
+          password: ''
           priority: 0
           uuid: 'some_uuid_2'
           master: false
 
-    2:
+    uuid_uuid2:
         - name: 'shard_2_m'
           addr: 'shard_2_m.example'
+          user: 'guest'
+          password: ''
           priority: 42
           uuid: 'some_uuid_3'
           master: true
 
         - name: 'shard_2_s_1'
           addr: 'shard_2_s_1.example'
+          user: 'guest'
+          password: ''
           priority: 4
           uuid: 'some_uuid_4'
           master: false
 
         - name: 'shard_2_s_2'
           addr: 'shard_2_s_2.example'
+          user: 'guest'
+          password: ''
           priority: 0
           uuid: 'some_uuid_5'
           master: false
 routers:
     - name: 'router_1'
       addr: 'router_1.example'
+      user: 'guest'
+      password: ''
       priority: 0
       uuid: 'some_router_uuid'
 
     - name: 'router_2'
       addr: 'router_2.example'
+      user: 'guest'
+      password: ''
       priority: 0
       uuid: 'some_router_uuid1'
 

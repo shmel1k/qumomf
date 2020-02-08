@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/shmel1k/qumomf/internal/tarantool"
+	"github.com/shmel1k/qumomf/pkg/vshard"
 	"gopkg.in/yaml.v2"
 )
 
@@ -16,16 +18,25 @@ type Config struct {
 		ConnectTimeout time.Duration `yaml:"connect_timeout"`
 		RequestTimeout time.Duration `yaml:"request_timeout"`
 	} `yaml:"tarantool"`
-	Shards  map[string][]ShardConfig `yaml:"shards"`
-	Routers []ShardConfig            `yaml:"routers"`
+	Shards  map[string][]tarantool.ShardConfig `yaml:"shards"`
+	Routers []tarantool.ShardConfig            `yaml:"routers"`
 }
 
-type ShardConfig struct {
-	Name     string `yaml:"name"`
-	Addr     string `yaml:"addr"`
-	UUID     string `yaml:"uuid"`
-	Priority int    `yaml:"priority"`
-	Master   bool   `yaml:"master"`
+func (c *Config) ToShardingConfig() vshard.ShardingConfig {
+	var res vshard.ShardingConfig
+	for k, v := range c.Shards {
+		var r vshard.ReplicasetConfig
+		for _, vv := range v {
+			r.Replicas[vv.UUID] = vshard.ReplicaConfig{
+				Name:   vv.Name,
+				Master: vv.Master,
+				URI:    vshard.PrepareURI(vv.User, vv.Password, vv.Addr),
+			}
+		}
+		res.Shards[k] = r
+	}
+
+	return res
 }
 
 func Setup(path string) (*Config, error) {
