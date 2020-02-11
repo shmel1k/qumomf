@@ -3,7 +3,6 @@ package config
 import (
 	"io/ioutil"
 	"os"
-	"time"
 
 	"github.com/shmel1k/qumomf/internal/tarantool"
 	"github.com/shmel1k/qumomf/pkg/vshard"
@@ -14,10 +13,6 @@ type Config struct {
 	Qumomf struct {
 		Port string `yaml:"port"`
 	} `yaml:"qumomf"`
-	Tarantool struct {
-		ConnectTimeout time.Duration `yaml:"connect_timeout"`
-		RequestTimeout time.Duration `yaml:"request_timeout"`
-	} `yaml:"tarantool"`
 	Shards  map[string][]tarantool.ShardConfig `yaml:"shards"`
 	Routers []tarantool.ShardConfig            `yaml:"routers"`
 }
