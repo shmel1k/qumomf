@@ -6,67 +6,44 @@ tarantool:
     request_timeout: '1s'
 
 shards:
-    uuid_uuid1:
-        - name: 'shard_1_m'
-          addr: 'shard_1_m.example'
-          user: 'guest'
-          password: ''
+    7432f072-c00b-4498-b1a6-6d9547a8a150:
+        - name: 'qumomf_1_m'
+          addr: '127.0.0.1:9303'
+          user: 'qumomf'
+          password: 'qumomf'
           priority: 42
-          uuid: 'some_uuid'
+          uuid: '294e7310-13f0-4690-b136-169599e87ba0'
           master: true
 
-        - name: 'shard_1_s_1'
-          addr: 'shard_1_s_1.example'
-          user: 'guest'
-          password: ''
+        - name: 'qumomf_1_s'
+          addr: '127.0.0.1:9304'
+          user: 'qumomf'
+          password: 'qumomf'
           priority: 4
-          uuid: 'some_uuid_1'
+          uuid: 'cd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1'
           master: false
 
-        - name: 'shard_1_s_2'
-          addr: 'shard_1_s_2.example'
-          user: 'guest'
-          password: ''
-          priority: 0
-          uuid: 'some_uuid_2'
-          master: false
-
-    uuid_uuid2:
-        - name: 'shard_2_m'
-          addr: 'shard_2_m.example'
-          user: 'guest'
-          password: ''
+    5065fb5f-5f40-498e-af79-43887ba3d1ec:
+        - name: 'qumomf_2_m'
+          addr: '127.0.0.1:9305'
+          user: 'qumomf'
+          password: 'qumomf'
           priority: 42
           uuid: 'some_uuid_3'
           master: true
 
-        - name: 'shard_2_s_1'
-          addr: 'shard_2_s_1.example'
-          user: 'guest'
-          password: ''
+        - name: 'qumomf_2_s'
+          addr: '127.0.0.1:9306'
+          user: 'qumomf'
+          password: 'qumomf'
           priority: 4
           uuid: 'some_uuid_4'
           master: false
 
-        - name: 'shard_2_s_2'
-          addr: 'shard_2_s_2.example'
-          user: 'guest'
-          password: ''
-          priority: 0
-          uuid: 'some_uuid_5'
-          master: false
 routers:
     - name: 'router_1'
-      addr: 'router_1.example'
-      user: 'guest'
+      addr: '127.0.0.1:9301'
+      user: 'qumomf'
       password: ''
       priority: 0
       uuid: 'some_router_uuid'
-
-    - name: 'router_2'
-      addr: 'router_2.example'
-      user: 'guest'
-      password: ''
-      priority: 0
-      uuid: 'some_router_uuid1'
-

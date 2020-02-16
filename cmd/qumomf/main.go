@@ -3,9 +3,11 @@ package main
 import (
 	"flag"
 	"log"
+	"time"
 
 	"github.com/shmel1k/qumomf/internal/config"
-	"github.com/shmel1k/qumomf/internal/tarantool"
+	"github.com/shmel1k/qumomf/pkg/vshard"
+	"github.com/shmel1k/qumomf/pkg/vshard/monitor"
 )
 
 var (
@@ -19,7 +21,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	tarantool.SetupConnection(tarantool.ShardConfig{})
+	cluster := vshard.NewCluster(cfg.Shards)
 
-	log.Println(cfg)
+	mon := monitor.New(monitor.Config{
+		CheckTimeout: time.Second,
+	}, cluster)
+
+	log.Println("Starting qumomf")
+
+	errs := mon.Serve()
+	select {
+	case <-errs:
+	}
 }

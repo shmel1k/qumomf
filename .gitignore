@@ -17,3 +17,5 @@ vendor/
 # vim
 *.swp
 *.swo
+
+bin/

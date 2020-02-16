@@ -40,18 +40,13 @@ func (c *InstanceConfig) withDefaults() {
 	}
 }
 
-type Connector struct {
-	cfg  InstanceConfig
-	conn *tarantool.Connector
-}
-
 func setupConnection(c InstanceConfig) *Connector {
 	c.withDefaults()
 	cfg := &tarantool.Options{
 		ConnectTimeout: c.ConnectTimeout,
 		QueryTimeout:   c.RequestTimeout,
 		Password:       c.Password,
-		User:           c.Name,
+		User:           c.User,
 		UUID:           c.UUID,
 	}
 

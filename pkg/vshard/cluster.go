@@ -8,7 +8,7 @@ type cluster struct {
 	replicas []Replicaset
 }
 
-func NewCluster(c [][]InstanceConfig) Cluster {
+func NewCluster(c map[string][]InstanceConfig) Cluster {
 	res := &cluster{
 		replicas: make([]Replicaset, 0, len(c)),
 	}

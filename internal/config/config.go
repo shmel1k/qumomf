@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/shmel1k/qumomf/internal/tarantool"
 	"github.com/shmel1k/qumomf/pkg/vshard"
 	"gopkg.in/yaml.v2"
 )
@@ -13,8 +12,8 @@ type Config struct {
 	Qumomf struct {
 		Port string `yaml:"port"`
 	} `yaml:"qumomf"`
-	Shards  map[string][]tarantool.ShardConfig `yaml:"shards"`
-	Routers []tarantool.ShardConfig            `yaml:"routers"`
+	Shards  map[string][]vshard.InstanceConfig `yaml:"shards"`
+	Routers []vshard.InstanceConfig            `yaml:"routers"`
 }
 
 func (c *Config) ToShardingConfig() vshard.ShardingConfig {
