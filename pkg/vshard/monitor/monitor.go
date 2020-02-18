@@ -2,7 +2,6 @@ package monitor
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -37,11 +36,16 @@ func (m *storageMonitor) checkReplicas(ctx context.Context, r vshard.Replicaset)
 	}
 
 	for _, set := range r.GetReplicas() {
-		info := set.Exec(ctx, q)
-		if info.Error != nil {
-			return info.Error
+		infoResponse := set.Exec(ctx, q)
+		if infoResponse.Error != nil {
+			return infoResponse.Error
 		}
-		parseStorageInfo(info.Data)
+
+		info, err := parseStorageInfo(infoResponse.Data)
+		if err != nil {
+			log.Println(err)
+		}
+		log.Println(info)
 	}
 	return nil
 }
@@ -81,8 +85,4 @@ func (m *storageMonitor) Serve() <-chan error {
 		}
 	}()
 	return errs
-}
-
-func parseStorageInfo(data [][]interface{}) {
-	fmt.Println(data)
 }
