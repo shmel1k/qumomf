@@ -8,32 +8,32 @@ import (
 
 func TestLagQuorum(t *testing.T) {
 	var testData = []struct {
-		info         vshard.ShardInfo
+		info         vshard.ReplicaSetInfo
 		testName     string
-		expectedUUID string
+		expectedUUID vshard.ReplicaUUID
 		expectedErr  error
 	}{
 		{
-			info: vshard.ShardInfo{
+			info: vshard.ReplicaSetInfo{
 				vshard.ReplicaInfo{
-					Lag:    0.01,
-					Status: vshard.StatusFollow,
-					UUID:   "1",
+					Lag:  0.01,
+					Role: vshard.RoleFollow,
+					UUID: "1",
 				},
 				vshard.ReplicaInfo{
-					Lag:    0.05,
-					Status: vshard.StatusFollow,
-					UUID:   "2",
+					Lag:  0.05,
+					Role: vshard.RoleFollow,
+					UUID: "2",
 				},
 			},
 			expectedUUID: "1",
 			testName:     "ok",
 		},
 		{
-			info: vshard.ShardInfo{
+			info: vshard.ReplicaSetInfo{
 				vshard.ReplicaInfo{
-					Status: vshard.StatusMaster,
-					UUID:   "1",
+					Role: vshard.RoleMaster,
+					UUID: "1",
 				},
 			},
 			expectedErr: ErrNoReplicaFound,

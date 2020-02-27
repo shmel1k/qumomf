@@ -1,4 +1,4 @@
-package monitor
+package orchestrator
 
 import "fmt"
 
@@ -27,7 +27,6 @@ type storageInfo struct {
 	Alerts      []interface{}
 	Bucket      *bucket
 	Replicasets replicasets
-	Status      uint32
 	Replication replication
 }
 
@@ -165,6 +164,5 @@ func parseStorageInfo(data [][]interface{}) (*storageInfo, error) {
 		Bucket:      b,
 		Replicasets: sets,
 		Replication: repl,
-		Status:      0,
 	}, nil
 }

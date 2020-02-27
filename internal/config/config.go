@@ -4,24 +4,26 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/shmel1k/qumomf/pkg/vshard"
 	"gopkg.in/yaml.v2"
+
+	"github.com/shmel1k/qumomf/pkg/vshard"
 )
 
 type Config struct {
 	Qumomf struct {
 		Port string `yaml:"port"`
 	} `yaml:"qumomf"`
-	Shards  map[string][]vshard.InstanceConfig `yaml:"shards"`
-	Routers []vshard.InstanceConfig            `yaml:"routers"`
+	Shards  map[vshard.ShardUUID][]vshard.InstanceConfig `yaml:"shards"`
+	Routers []vshard.InstanceConfig                      `yaml:"routers"`
 }
 
 func (c *Config) ToShardingConfig() vshard.ShardingConfig {
 	var res vshard.ShardingConfig
 	for k, v := range c.Shards {
-		var r vshard.ReplicasetConfig
+		var r vshard.ReplicaSetConfig
 		for _, vv := range v {
-			r.Replicas[vv.UUID] = vshard.ReplicaConfig{
+			rUUID := vshard.ReplicaUUID(vv.UUID)
+			r.Replicas[rUUID] = vshard.ReplicaConfig{
 				Name:   vv.Name,
 				Master: vv.Master,
 				URI:    vshard.PrepareURI(vv.User, vv.Password, vv.Addr),

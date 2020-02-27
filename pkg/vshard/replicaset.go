@@ -1,51 +1,58 @@
 package vshard
 
-import (
-	"sync"
-)
+import "sync"
 
-type Replicaset interface {
-	GetMaster() string
-	SetMaster(string)
-	GetReplicas() map[string]*Connector
+type ReplicaSet interface {
+	GetShardUUID() ShardUUID
+	GetConnectors() map[ReplicaUUID]*Connector
+
+	GetMaster() ReplicaUUID
+	SetMaster(ReplicaUUID)
 }
 
 type replicaset struct {
-	mu            sync.Mutex
-	shards        map[string]*Connector
-	currentMaster string
+	mu         sync.RWMutex
+	shardUUID  ShardUUID
+	masterUUID ReplicaUUID
+	connectors map[ReplicaUUID]*Connector
 }
 
-func NewReplicaset(conns []*Connector) Replicaset {
-	mp := make(map[string]*Connector)
+func NewReplicaSet(shardUUID ShardUUID, conns []*Connector) ReplicaSet {
+	mp := make(map[ReplicaUUID]*Connector, len(conns))
 
-	master := ""
+	var master ReplicaUUID
 	for _, v := range conns {
-		mp[v.cfg.UUID] = v
+		uuid := ReplicaUUID(v.cfg.UUID)
+		mp[uuid] = v
 		if v.cfg.Master {
-			master = v.cfg.UUID
+			master = uuid
 		}
 	}
 
 	return &replicaset{
-		currentMaster: master,
-		shards:        mp,
+		shardUUID:  shardUUID,
+		masterUUID: master,
+		connectors: mp,
 	}
 }
 
-func (r *replicaset) GetMaster() string {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	return r.currentMaster
+func (r *replicaset) GetShardUUID() ShardUUID {
+	return r.shardUUID
 }
 
-func (r *replicaset) SetMaster(id string) {
+func (r *replicaset) GetMaster() ReplicaUUID {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	return r.masterUUID
+}
+
+func (r *replicaset) SetMaster(id ReplicaUUID) {
 	r.mu.Lock()
-	r.currentMaster = id
+	r.masterUUID = id
 	r.mu.Unlock()
 }
 
-func (r *replicaset) GetReplicas() map[string]*Connector {
-	return r.shards
+func (r *replicaset) GetConnectors() map[ReplicaUUID]*Connector {
+	return r.connectors
 }
