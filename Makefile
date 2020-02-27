@@ -1,4 +1,25 @@
 all: build
 
+.PHONY: build
 build:
 	go build -o bin/qumomf cmd/qumomf/main.go
+
+.PHONY: run
+run: build
+	bin/qumomf -config=example/qumomf.yaml
+
+.PHONY: run_docker
+run_docker:
+	docker-compose -f example/docker-compose.yml up -d
+
+.PHONY: down_docker
+down_docker:
+	docker-compose -f example/docker-compose.yml down -v --rmi local --remove-orphans
+
+.PHONY: fmt
+fmt:
+	go fmt ./...
+
+.PHONY: test
+test:
+	go test -count=1 ./...

@@ -17,23 +17,27 @@ const (
 
 type Quorum interface {
 	// ChooseMaster selects new master and returns back its uuid
-	ChooseMaster(vshard.ShardInfo) (string, error)
+	ChooseMaster(vshard.ReplicaSetInfo) (vshard.ReplicaUUID, error)
 }
 
 type lagQuorum struct {
 }
 
-func (*lagQuorum) ChooseMaster(info vshard.ShardInfo) (string, error) {
+func NewLagQuorum() Quorum {
+	return &lagQuorum{}
+}
+
+func (*lagQuorum) ChooseMaster(info vshard.ReplicaSetInfo) (vshard.ReplicaUUID, error) {
 	if len(info) == 0 {
 		return "", ErrEmptyInfo
 	}
 
 	minLag := maxLag
-	minUUID := ""
-	for _, v := range info {
-		if v.Lag < minLag && v.Status == vshard.StatusFollow {
-			minLag = v.Lag
-			minUUID = v.UUID
+	minUUID := vshard.ReplicaUUID("")
+	for _, r := range info {
+		if r.Lag < minLag && r.Role == vshard.RoleFollow {
+			minLag = r.Lag
+			minUUID = r.UUID
 		}
 	}
 
