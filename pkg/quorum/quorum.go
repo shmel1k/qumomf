@@ -35,7 +35,7 @@ func (*lagQuorum) ChooseMaster(info vshard.ReplicaSetInfo) (vshard.ReplicaUUID, 
 	minLag := maxLag
 	minUUID := vshard.ReplicaUUID("")
 	for _, r := range info {
-		if r.Lag < minLag && r.Role == vshard.RoleFollow {
+		if r.Lag < minLag && r.Status == vshard.StatusFollow {
 			minLag = r.Lag
 			minUUID = r.UUID
 		}
