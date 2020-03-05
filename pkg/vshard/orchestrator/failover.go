@@ -59,7 +59,7 @@ func (f *swapMasterFailover) checkAndRecover(ctx context.Context, analysis Repli
 
 	for _, replicaInfo := range info {
 		uuid := replicaInfo.UUID
-		switch replicaInfo.Status {
+		switch replicaInfo.State {
 		case vshard.DeadMaster:
 			log.Println(fmt.Sprintf("Found a dead master. Replica UUID: %s. Start rebuilding the shard topology.", uuid))
 			f.cluster.StartRecovery()

@@ -42,15 +42,15 @@ func (m *storageMonitor) analyzeReplicas(ctx context.Context, set vshard.Replica
 	masterUUID := set.GetMaster()
 
 	for uuid, conn := range set.GetConnectors() {
-		role := vshard.RoleFollow
+		status := vshard.StatusFollow
 		if uuid == masterUUID {
-			role = vshard.RoleMaster
+			status = vshard.StatusMaster
 		}
 
 		replicaInfo := vshard.ReplicaInfo{
 			UUID:   uuid,
-			Role:   role,
-			Status: vshard.NoProblem,
+			Status: status,
+			State:  vshard.NoProblem,
 		}
 
 		infoResponse := conn.Exec(ctx, q)
@@ -61,20 +61,20 @@ func (m *storageMonitor) analyzeReplicas(ctx context.Context, set vshard.Replica
 				replicaInfo.Alerts = info.Alerts
 
 				if len(info.Alerts) > 0 {
-					replicaInfo.Status = vshard.HasActiveAlerts
+					replicaInfo.State = vshard.HasActiveAlerts
 				}
 			} else {
 				log.Println(err)
-				replicaInfo.Status = vshard.BadStorageInfo
+				replicaInfo.State = vshard.BadStorageInfo
 			}
 		} else {
 			log.Println(infoResponse.Error)
 
-			switch role {
-			case vshard.RoleMaster:
-				replicaInfo.Status = vshard.DeadMaster
-			case vshard.RoleFollow:
-				replicaInfo.Status = vshard.DeadSlave
+			switch status {
+			case vshard.StatusMaster:
+				replicaInfo.State = vshard.DeadMaster
+			case vshard.StatusFollow:
+				replicaInfo.State = vshard.DeadSlave
 			}
 		}
 

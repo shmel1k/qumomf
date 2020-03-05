@@ -5,32 +5,32 @@ import "fmt"
 type RouterUUID string
 type ShardUUID string
 type ReplicaUUID string
+type ReplicaState string
 type ReplicaStatus string
-type ReplicaRole string
 
 const (
-	NoProblem       ReplicaStatus = "NoProblem"
-	DeadMaster                    = "DeadMaster"
-	DeadSlave                     = "DeadSlave"
-	BadStorageInfo                = "BadStorageInfo"
-	HasActiveAlerts               = "HasActiveAlerts"
+	NoProblem       ReplicaState = "NoProblem"
+	DeadMaster                   = "DeadMaster"
+	DeadSlave                    = "DeadSlave"
+	BadStorageInfo               = "BadStorageInfo"
+	HasActiveAlerts              = "HasActiveAlerts"
 )
 
 const (
-	RoleFollow ReplicaRole = "follow"
-	RoleMaster ReplicaRole = "master"
+	StatusFollow ReplicaStatus = "follow"
+	StatusMaster ReplicaStatus = "master"
 )
 
 type ReplicaInfo struct {
 	UUID   ReplicaUUID
-	Role   ReplicaRole
 	Status ReplicaStatus
+	State  ReplicaState
 	Lag    float64
 	Alerts []interface{}
 }
 
 func (i ReplicaInfo) String() string {
-	return fmt.Sprintf("UUID: %s, Role: %s, Status: %s, Lag: %f, Alerts: %v", i.UUID, i.Role, i.Status, i.Lag, i.Alerts)
+	return fmt.Sprintf("UUID: %s, Status: %s, State: %s, Lag: %f, Alerts: %v", i.UUID, i.Status, i.State, i.Lag, i.Alerts)
 }
 
 type ReplicaSetInfo []ReplicaInfo
