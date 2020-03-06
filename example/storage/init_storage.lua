@@ -64,5 +64,9 @@ box.once('init', function()
     box.schema.user.grant('qumomf', 'read,write,execute', 'universe')
 end)
 
-function qumomf_store()
+function qumomf_change_master(shard_uuid, old_master_uuid, new_master_uuid)
+    replicas = cfg.sharding[shard_uuid].replicas
+    replicas[old_master_uuid].master = false
+    replicas[new_master_uuid].master = true
+    vshard.storage.cfg(cfg, os.getenv('STORAGE_UUID'))
 end

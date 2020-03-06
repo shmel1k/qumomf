@@ -2,21 +2,38 @@ package vshard
 
 import "fmt"
 
-type ReplicationStatus string
+type RouterUUID string
+type ShardUUID string
+type ReplicaUUID string
+type ReplicaState string
+type ReplicaStatus string
 
-var (
-	StatusFollow ReplicationStatus = "follow"
-	StatusMaster ReplicationStatus = "master"
+const (
+	NoProblem       ReplicaState = "NoProblem"
+	DeadMaster                   = "DeadMaster"
+	DeadSlave                    = "DeadSlave"
+	BadStorageInfo               = "BadStorageInfo"
+	HasActiveAlerts              = "HasActiveAlerts"
+)
+
+const (
+	StatusFollow ReplicaStatus = "follow"
+	StatusMaster ReplicaStatus = "master"
 )
 
 type ReplicaInfo struct {
-	Status ReplicationStatus
+	UUID   ReplicaUUID
+	Status ReplicaStatus
+	State  ReplicaState
 	Lag    float64
-	UUID   string
-	Alerts []string
+	Alerts []interface{}
 }
 
-type ShardInfo []ReplicaInfo
+func (i ReplicaInfo) String() string {
+	return fmt.Sprintf("UUID: %s, Status: %s, State: %s, Lag: %f, Alerts: %v", i.UUID, i.Status, i.State, i.Lag, i.Alerts)
+}
+
+type ReplicaSetInfo []ReplicaInfo
 
 type ReplicaConfig struct {
 	Name   string
@@ -24,12 +41,12 @@ type ReplicaConfig struct {
 	Master bool
 }
 
-type ReplicasetConfig struct {
-	Replicas map[string]ReplicaConfig
+type ReplicaSetConfig struct {
+	Replicas map[ReplicaUUID]ReplicaConfig
 }
 
 type ShardingConfig struct {
-	Shards map[string]ReplicasetConfig
+	Shards map[ShardUUID]ReplicaSetConfig
 }
 
 type CommonConfig struct {

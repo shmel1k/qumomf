@@ -44,6 +44,6 @@ routers:
     - name: 'router_1'
       addr: '127.0.0.1:9301'
       user: 'qumomf'
-      password: ''
+      password: 'qumomf'
       priority: 0
       uuid: 'some_router_uuid'

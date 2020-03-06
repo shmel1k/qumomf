@@ -21,3 +21,7 @@ func (c *Connector) Exec(ctx context.Context, q tarantool.Query, opts ...taranto
 
 	return conn.Exec(ctx, q, opts...)
 }
+
+func (c *Connector) Close() {
+	c.conn.Close()
+}
