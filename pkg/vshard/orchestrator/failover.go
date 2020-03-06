@@ -3,7 +3,8 @@ package orchestrator
 import (
 	"context"
 	"fmt"
-	"log"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/viciious/go-tarantool"
 
@@ -61,14 +62,14 @@ func (f *swapMasterFailover) checkAndRecover(ctx context.Context, analysis Repli
 		uuid := replicaInfo.UUID
 		switch replicaInfo.State {
 		case vshard.DeadMaster:
-			log.Println(fmt.Sprintf("Found a dead master. Replica UUID: %s. Start rebuilding the shard topology.", uuid))
+			log.Ctx(ctx).Info().Msg(fmt.Sprintf("Found a dead master. Replica UUID: %s. Start rebuilding the shard topology.", uuid))
 			f.cluster.StartRecovery()
 			f.promoteFollowerToMaster(ctx, replicaSet, info)
 			f.cluster.StopRecovery()
 		case vshard.DeadSlave:
-			log.Println(fmt.Sprintf("Found a dead slave. Replica UUID: %s", uuid))
+			log.Ctx(ctx).Info().Msg(fmt.Sprintf("Found a dead slave. Replica UUID: %s", uuid))
 		case vshard.BadStorageInfo:
-			log.Println(fmt.Sprintf("Found a replica with unknown state. Replica UUID: %s", uuid))
+			log.Ctx(ctx).Info().Msg(fmt.Sprintf("Found a replica with unknown state. Replica UUID: %s", uuid))
 		}
 	}
 }
@@ -76,11 +77,11 @@ func (f *swapMasterFailover) checkAndRecover(ctx context.Context, analysis Repli
 func (f *swapMasterFailover) promoteFollowerToMaster(ctx context.Context, r vshard.ReplicaSet, info vshard.ReplicaSetInfo) {
 	candidateUUID, err := f.elector.ChooseMaster(info)
 	if err != nil {
-		log.Println(fmt.Sprintf("Failed to elect a new master: %s", err))
+		log.Ctx(ctx).Info().Msg(fmt.Sprintf("Failed to elect a new master: %s", err))
 		return
 	}
 
-	log.Println(fmt.Sprintf("New master is elected: %s. Going to update cluster configuration", candidateUUID))
+	log.Ctx(ctx).Info().Msg(fmt.Sprintf("New master is elected: %s. Going to update cluster configuration", candidateUUID))
 
 	q := &tarantool.Call{
 		Name: funcChangeMaster,
@@ -94,9 +95,9 @@ func (f *swapMasterFailover) promoteFollowerToMaster(ctx context.Context, r vsha
 		for uuid, conn := range r.GetConnectors() {
 			resp := conn.Exec(ctx, q)
 			if resp.Error == nil {
-				log.Println(fmt.Sprintf("Configuration was updated on node %s", uuid))
+				log.Ctx(ctx).Info().Msg(fmt.Sprintf("Configuration was updated on node %s", uuid))
 			} else {
-				log.Println(fmt.Sprintf("Failed to update configuration on node %s: %s", uuid, resp.Error))
+				log.Ctx(ctx).Info().Msg(fmt.Sprintf("Failed to update configuration on node %s: %s", uuid, resp.Error))
 			}
 		}
 	}
@@ -105,9 +106,9 @@ func (f *swapMasterFailover) promoteFollowerToMaster(ctx context.Context, r vsha
 	for uuid, conn := range f.cluster.GetRouterConnectors() {
 		resp := conn.Exec(ctx, q)
 		if resp.Error == nil {
-			log.Println(fmt.Sprintf("Configuration was updated on router %s", uuid))
+			log.Ctx(ctx).Info().Msg(fmt.Sprintf("Configuration was updated on router %s", uuid))
 		} else {
-			log.Println(fmt.Sprintf("Failed to update configuration on router %s: %s", uuid, resp.Error))
+			log.Ctx(ctx).Info().Msg(fmt.Sprintf("Failed to update configuration on router %s: %s", uuid, resp.Error))
 		}
 	}
 
