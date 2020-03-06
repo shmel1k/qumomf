@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/philhofer/fwd v1.0.0 // indirect
+	github.com/rs/zerolog v1.18.0 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/tinylib/msgp v1.1.1 // indirect
