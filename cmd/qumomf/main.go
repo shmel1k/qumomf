@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -45,7 +44,7 @@ func main() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-sigs
 
-	log.Info().Msg(fmt.Sprintf("Received system signal: %s. Shutting down qumomf", sig))
+	log.Info().Msgf("Received system signal: %s. Shutting down qumomf", sig)
 
 	mon.Shutdown()
 	failover.Shutdown()
