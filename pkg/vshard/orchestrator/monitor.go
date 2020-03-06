@@ -70,19 +70,17 @@ func (m *storageMonitor) analyzeReplicas(ctx context.Context, set vshard.Replica
 			}
 		} else {
 			log.Ctx(ctx).Error().Msgf("%s", infoResponse.Error.Error())
-
-			switch status {
-			case vshard.StatusMaster:
-				replicaInfo.State = vshard.DeadMaster
-			case vshard.StatusFollow:
-				replicaInfo.State = vshard.DeadSlave
-			}
+		}
+		switch status {
+		case vshard.StatusMaster:
+			replicaInfo.State = vshard.DeadMaster
+		case vshard.StatusFollow:
+			replicaInfo.State = vshard.DeadSlave
 		}
 
 		setInfo = append(setInfo, replicaInfo)
 		log.Ctx(ctx).Info().Msgf("$+v\n", replicaInfo)
 	}
-
 	return ReplicaSetAnalysis{
 		Set:  set,
 		Info: setInfo,

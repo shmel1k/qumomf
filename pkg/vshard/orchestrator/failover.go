@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog/log"
-
 	"github.com/viciious/go-tarantool"
 
 	"github.com/shmel1k/qumomf/pkg/quorum"
