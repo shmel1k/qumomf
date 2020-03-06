@@ -2,9 +2,9 @@ package monitor
 
 import (
 	"context"
-	"log"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/shmel1k/qumomf/pkg/vshard"
 	"github.com/viciious/go-tarantool"
 )
@@ -43,9 +43,10 @@ func (m *storageMonitor) checkReplicas(ctx context.Context, r vshard.Replicaset)
 
 		info, err := parseStorageInfo(infoResponse.Data)
 		if err != nil {
-			log.Println(err)
+			//log.Ctx(ctx).Error().Msgf("Error happened while parsing storage info %s", err.Error())
+			return err
 		}
-		log.Println(info)
+		log.Ctx(ctx).Info().Msgf("%+v\n", info)
 	}
 	return nil
 }
@@ -65,10 +66,9 @@ func (m *storageMonitor) serveReplicaSet(r vshard.Replicaset) error {
 
 		err := m.checkReplicas(ctx, r)
 		if err != nil {
-			log.Println(err)
+			return err
 		}
 	}
-
 	return nil
 }
 

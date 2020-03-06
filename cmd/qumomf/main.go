@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
-	"log"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/shmel1k/qumomf/internal/config"
 	"github.com/shmel1k/qumomf/pkg/vshard"
 	"github.com/shmel1k/qumomf/pkg/vshard/monitor"
@@ -18,7 +18,8 @@ func main() {
 	flag.Parse()
 	cfg, err := config.Setup(*configPath)
 	if err != nil {
-		log.Fatal(err)
+		log.Error().Msgf("Error happened while setup config: %s", err.Error())
+		return
 	}
 
 	cluster := vshard.NewCluster(cfg.Shards)
@@ -27,7 +28,7 @@ func main() {
 		CheckTimeout: time.Second,
 	}, cluster)
 
-	log.Println("Starting qumomf")
+	log.Info().Msg("Starting qumomf")
 
 	errs := mon.Serve()
 	select {
