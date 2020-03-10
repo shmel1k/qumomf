@@ -65,11 +65,11 @@ func (m *storageMonitor) analyzeReplicas(ctx context.Context, set vshard.Replica
 					replicaInfo.State = vshard.HasActiveAlerts
 				}
 			} else {
-				log.Ctx(ctx).Error().Msgf("%s", err.Error())
+				log.Error().Msgf("%s", err.Error())
 				replicaInfo.State = vshard.BadStorageInfo
 			}
 		} else {
-			log.Ctx(ctx).Error().Msgf("%s", infoResponse.Error.Error())
+			log.Error().Msgf("%s", infoResponse.Error.Error())
 
 			switch status {
 			case vshard.StatusMaster:
@@ -80,7 +80,7 @@ func (m *storageMonitor) analyzeReplicas(ctx context.Context, set vshard.Replica
 		}
 
 		setInfo = append(setInfo, replicaInfo)
-		log.Ctx(ctx).Info().Msgf("%+v\n", replicaInfo)
+		log.Info().Msgf("%+v\n", replicaInfo)
 	}
 	return ReplicaSetAnalysis{
 		Set:  set,

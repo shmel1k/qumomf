@@ -62,6 +62,23 @@ func TestCheckAndRecover(t *testing.T) {
 	}
 }
 
-func TestPromoteFollowerToMaster(t *testing.T) {
-
+type PromoteFollowerToMasterTest struct {
+	name string
 }
+
+//func TestPromoteFollowerToMaster(t *testing.T) {
+//	swapMasterFailover := swapMasterFailover{
+//		cluster:vshard.NewCluster([]vshard.InstanceConfig{}, map[vshard.ShardUUID][]vshard.InstanceConfig{}),
+//		elector: quorum.NewLagQuorum(),
+//	}
+//	tests := []PromoteFollowerToMasterTest {
+//		{
+//			name: ,
+//		},
+//	}
+//	for _, test := range tests {
+//		t.Run(test.name, func(t *testing.T) {
+//			swapMasterFailover.promoteFollowerToMaster(dummyContext, )
+//		})
+//	}
+//}
