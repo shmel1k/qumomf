@@ -80,7 +80,7 @@ func (m *storageMonitor) analyzeReplicas(ctx context.Context, set vshard.Replica
 		}
 
 		setInfo = append(setInfo, replicaInfo)
-		log.Ctx(ctx).Info().Msgf("$+v\n", replicaInfo)
+		log.Ctx(ctx).Info().Msgf("%+v\n", replicaInfo)
 	}
 	return ReplicaSetAnalysis{
 		Set:  set,
