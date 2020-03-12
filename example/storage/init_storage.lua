@@ -1,6 +1,8 @@
 os = require('os')
 vshard = require('vshard')
 
+local QUMOMF_KEY = 1
+
 local cfg = {
     memtx_memory = 8 * 1024 * 1024 * 1024,
     bucket_count = 50000,
@@ -62,6 +64,20 @@ vshard.storage.cfg(cfg, os.getenv('STORAGE_UUID'))
 
 box.once('init', function()
     box.schema.user.grant('qumomf', 'read,write,execute', 'universe')
+    box.schema.user.create('qumomf', { password = 'qumomf', if_not_exists = true })
+
+    local space = box.schema.create_space('qumomf', {
+        if_not_exists = true,
+    })
+    space:create_index('key', {
+        type = 'TREE',
+        if_not_exists = true,
+        unique = true,
+        parts = {
+            QUMOMF_KEY, 'string',
+        },
+    })
+
 end)
 
 function qumomf_change_master(shard_uuid, old_master_uuid, new_master_uuid)
@@ -70,3 +86,5 @@ function qumomf_change_master(shard_uuid, old_master_uuid, new_master_uuid)
     replicas[new_master_uuid].master = true
     vshard.storage.cfg(cfg, os.getenv('STORAGE_UUID'))
 end
+
+dofile('/etc/tarantool/instances.enabled/opc/storage/storage.lua')
