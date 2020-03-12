@@ -1,3 +1,5 @@
+
+
 all: build
 
 .PHONY: build
@@ -23,3 +25,9 @@ fmt:
 .PHONY: test
 test:
 	go test -count=1 ./...
+
+.PHONY: integration_test
+integration_test:
+	cd example && go test -run Test_Router_AddAndCheckKey -v
+	docker-compose -f example/docker-compose.yml stop storage_1_m storage_2_m
+	cd example && go test -run Test_Router_AddAndCheckKey -v

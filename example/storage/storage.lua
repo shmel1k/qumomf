@@ -1,24 +1,20 @@
 require('strict').on()
-platform = require('platform')
+os = require('os')
 
-local function qumomf_set(key, value)
-    box.space.qumomf:put({key, value})
+local IDX_KEY = 1
+local IDX_VALUE = 2
+
+function qumomf_set(key, value, expiration_ts)
+    box.space.qumomf:insert({ key, value, 0 })
     return {}
 end
 
-local function qumomf_get(key)
+function qumomf_get(key)
     local tuple = box.space.qumomf:select(key)
     if #tuple == 0 then
         return nil
     end
     tuple = tuple[1]
 
-    return tuple
+    return tuple[IDX_VALUE]
 end
-
-platform.init({
-    functions = {
-        qumomf_get = platform.wrap_func('qumomf_get', qumomf_get),
-        qumomf_set = platform.wrap_func('qumomf_set', qumomf_set),
-    },
-})

@@ -1,6 +1,6 @@
-vshard = require('vshard')
+require('strict').on()
 
-local QUMOMF_KEY = 1
+vshard = require('vshard')
 
 local cfg = {
     memtx_memory = 8 * 1024 * 1024 * 1024,
@@ -61,31 +61,12 @@ local cfg = {
 cfg.listen = 3301
 vshard.router.cfg(cfg)
 
-box.once('init', function()
-    box.schema.user.grant('qumomf', 'read,write,execute', 'universe')
-    box.schema.user.create('qumomf', { password = 'qumomf', if_not_exists = true })
+box.once("init", function()
+    box.schema.user.create('qumomf', {password='qumomf', if_not_exists=true})
+    box.schema.user.grant('qumomf', 'read,write,create,execute', 'universe')
 
-    local space = box.schema.create_space('qumomf', {
-        if_not_exists = true,
-    })
-
-    space:create_index('key', {
-        type = 'TREE',
-        if_not_exists = true,
-        unique = true,
-        parts = {
-            QUMOMF_KEY, 'string',
-        },
-    })
+    vshard.router.bootstrap()
 end)
 
-vshard.router.bootstrap()
+dofile('/etc/tarantool/instances.enabled/qumomf/router/router.lua')
 
-function qumomf_change_master(shard_uuid, old_master_uuid, new_master_uuid)
-    replicas = cfg.sharding[shard_uuid].replicas
-    replicas[old_master_uuid].master = false
-    replicas[new_master_uuid].master = true
-    vshard.router.cfg(cfg)
-end
-
---dofile('/etc/tarantool/instances.enabled/opc/router/router.lua')

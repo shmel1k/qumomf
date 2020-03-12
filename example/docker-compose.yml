@@ -1,22 +1,21 @@
 version: '3.3'
-
 services:
     router_1:
         build: './router'
-        container_name: qumomf_router
+        container_name: qumomf_router.ddk
         networks:
             - qumomf
         ports:
             - '9301:3301'
             - '19301:8088'
         depends_on:
-            - shard_1_m
-            - shard_1_s
-            - shard_2_m
-            - shard_2_s
-    shard_1_m:
+            - storage_1_m
+            - storage_1_s
+            - storage_2_m
+            - storage_2_s
+    storage_1_m:
         build: './storage'
-        container_name: qumomf_1_m
+        container_name: qumomf_1_m.ddk
         networks:
             - qumomf
         ports:
@@ -24,11 +23,11 @@ services:
             - '19303:8088'
         environment:
             - STORAGE_UUID=294e7310-13f0-4690-b136-169599e87ba0
-    shard_1_s:
+    storage_1_s:
         build: './storage'
-        container_name: qumomf_1_s
+        container_name: qumomf_1_s.ddk
         depends_on:
-            - shard_1_m
+            - storage_1_m
         networks:
             - qumomf
         ports:
@@ -36,10 +35,9 @@ services:
             - '19304:8088'
         environment:
             - STORAGE_UUID=cd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1
-
-    shard_2_m:
+    storage_2_m:
         build: './storage'
-        container_name: qumomf_2_m
+        container_name: qumomf_2_m.ddk
         networks:
             - qumomf
         ports:
@@ -47,19 +45,18 @@ services:
             - '19305:8088'
         environment:
             - STORAGE_UUID=f3ef657e-eb9a-4730-b420-7ea78d52797d
-    shard_2_s:
+    storage_2_s:
         build: './storage'
-        container_name: qumomf_2_s
+        container_name: qumomf_2_s.ddk
         networks:
             - qumomf
         ports:
             - '9306:3301'
             - '19306:8088'
         depends_on:
-            - shard_2_m
+            - storage_2_m
         environment:
             - STORAGE_UUID=7d64dd00-161e-4c99-8b3c-d3c4635e18d2
-
 networks:
     qumomf:
         driver: bridge
