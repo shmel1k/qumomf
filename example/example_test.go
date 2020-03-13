@@ -71,7 +71,6 @@ func Test_Router_AddAndCheckKey(t *testing.T) {
 
 	expectedKey := GetRandomString(stringLen)
 	expectedValue := GetRandomString(stringLen)
-	fmt.Println("key", expectedKey)
 
 	resp, err := conn.Call(setCall, []interface{}{expectedKey, expectedValue})
 	assert.Nil(t, err)
