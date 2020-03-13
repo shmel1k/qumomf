@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shmel1k/qumomf/example/LuaHelpers"
+	"github.com/shmel1k/qumomf/example/luaHelpers"
 
 	"github.com/stretchr/testify/assert"
 
@@ -35,7 +35,7 @@ func parseResponse(data []interface{}) (string, error) {
 	}
 
 	d := data[0].([]interface{})
-	value, err := LuaHelpers.ParseString(d[0])
+	value, err := luaHelpers.ParseString(d[0])
 	if err != nil {
 		return "", err
 	}

@@ -1,4 +1,4 @@
-package LuaHelpers
+package luaHelpers
 
 import (
 	"fmt"
