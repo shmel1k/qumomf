@@ -4,7 +4,7 @@ os = require('os')
 local IDX_KEY = 1
 local IDX_VALUE = 2
 
-function qumomf_set(key, value, expiration_ts)
+function qumomf_set(key, value)
     box.space.qumomf:insert({ key, value, 0 })
     return {}
 end

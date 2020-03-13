@@ -1,5 +1,3 @@
-require('strict').on()
-
 vshard = require('vshard')
 
 local cfg = {
@@ -64,9 +62,17 @@ vshard.router.cfg(cfg)
 box.once("init", function()
     box.schema.user.create('qumomf', {password='qumomf', if_not_exists=true})
     box.schema.user.grant('qumomf', 'read,write,create,execute', 'universe')
-
-    vshard.router.bootstrap()
 end)
+
+vshard.router.bootstrap()
+
+
+function qumomf_change_master(shard_uuid, old_master_uuid, new_master_uuid)
+    local replicas = cfg.sharding[shard_uuid].replicas
+    replicas[old_master_uuid].master = false
+    replicas[new_master_uuid].master = true
+    vshard.router.cfg(cfg)
+end
 
 dofile('/etc/tarantool/instances.enabled/qumomf/router/router.lua')
 

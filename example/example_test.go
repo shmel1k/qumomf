@@ -1,11 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
-
-	"github.com/shmel1k/qumomf/example/luaHelpers"
 
 	"github.com/stretchr/testify/assert"
 
@@ -24,9 +23,12 @@ const (
 	stringLen  = 5
 )
 
-type tntAnswer struct {
-	Key   string
-	Value string
+func ParseString(f interface{}) (string, error) {
+	switch t := f.(type) {
+	case string:
+		return t, nil
+	}
+	return "", fmt.Errorf("got invalid type %T for value %v", f, f)
 }
 
 func parseResponse(data []interface{}) (string, error) {
@@ -35,7 +37,7 @@ func parseResponse(data []interface{}) (string, error) {
 	}
 
 	d := data[0].([]interface{})
-	value, err := luaHelpers.ParseString(d[0])
+	value, err := ParseString(d[0])
 	if err != nil {
 		return "", err
 	}
@@ -43,9 +45,9 @@ func parseResponse(data []interface{}) (string, error) {
 	return value, nil
 }
 
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-func RandStringRunes(n int) string {
+func GetRandomString(n int) string {
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	rand.Seed(time.Now().UnixNano())
 	b := make([]rune, n)
 	for i := range b {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
@@ -54,6 +56,7 @@ func RandStringRunes(n int) string {
 }
 
 func Test_Router_AddAndCheckKey(t *testing.T) {
+	time.Sleep(time.Second)
 	opts := tarantool.Opts{
 		User:    user,
 		Pass:    pass,
@@ -66,16 +69,17 @@ func Test_Router_AddAndCheckKey(t *testing.T) {
 	_, err = conn.Ping()
 	assert.Nil(t, err)
 
-	keyTest1 := RandStringRunes(stringLen)
-	valueTest1 := RandStringRunes(stringLen)
+	expectedKey := GetRandomString(stringLen)
+	expectedValue := GetRandomString(stringLen)
+	fmt.Println("key", expectedKey)
 
-	_, err = conn.Call(setCall, []interface{}{keyTest1, valueTest1})
+	resp, err := conn.Call(setCall, []interface{}{expectedKey, expectedValue})
 	assert.Nil(t, err)
 
-	resp, err := conn.Call(getCall, []interface{}{keyTest1})
+	resp, err = conn.Call(getCall, []interface{}{expectedKey})
 	assert.Nil(t, err)
 
 	value, err := parseResponse(resp.Data)
 	assert.Nil(t, err)
-	assert.Equal(t, valueTest1, value)
+	assert.Equal(t, expectedValue, value)
 }

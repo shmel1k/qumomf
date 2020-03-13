@@ -24,9 +24,16 @@ function qumomf_get(key)
     return result
 end
 
-function qumomf_set(key, value, expiration_ts)
+function qumomf_set(key, value)
     local bucket_id = vshard.router.bucket_id(key)
-    return vshard.router.call(bucket_id, MODE_WRITE, OP_SET, {key, value, expiration_ts}, {
+    local netbox, err = vshard.router.route(bucket_id)
+
+    local result, err = netbox:callrw(OP_SET, { key, value }, {
         timeout = DEFAULT_TIMEOUT,
     })
+    if err ~= nil then
+        error(err)
+    end
+
+    return result
 end

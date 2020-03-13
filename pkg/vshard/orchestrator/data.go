@@ -3,12 +3,12 @@ package orchestrator
 import "fmt"
 
 type bucket struct {
-	Active    int64
+	Active    uint64
 	Garbage   int64
 	Pinned    int64
 	Receiving int64
 	Sending   int64
-	Total     int64
+	Total     uint64
 }
 
 type set struct {
@@ -36,7 +36,7 @@ func parseBucket(dt map[string]interface{}) (*bucket, error) {
 		return nil, fmt.Errorf("failed to cast bucket field %v %T to map[string]interface{}", dt["bucket"], dt["bucket"])
 	}
 
-	active, ok := mp["active"].(int64)
+	active, ok := mp["active"].(uint64)
 	if !ok {
 		return nil, fmt.Errorf("failed to case 'active' field %v %T to int64", mp["active"], mp["active"])
 	}
@@ -61,7 +61,7 @@ func parseBucket(dt map[string]interface{}) (*bucket, error) {
 		return nil, fmt.Errorf("failed to case 'sending' field %v %T to int64", mp["sending"], mp["sending"])
 	}
 
-	total, ok := mp["total"].(int64)
+	total, ok := mp["total"].(uint64)
 	if !ok {
 		return nil, fmt.Errorf("failed to case 'total' field %v %T to int64", mp["total"], mp["total"])
 	}

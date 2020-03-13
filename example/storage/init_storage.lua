@@ -1,6 +1,5 @@
 os = require('os')
 vshard = require('vshard')
-expirationd = require('expirationd')
 
 local IDX_KEY = 1
 local IDX_VALUE = 2
@@ -84,5 +83,12 @@ box.once("init", function()
         unique = true,
     })
 end)
+
+function qumomf_change_master(shard_uuid, old_master_uuid, new_master_uuid)
+    local replicas = cfg.sharding[shard_uuid].replicas
+    replicas[old_master_uuid].master = false
+    replicas[new_master_uuid].master = true
+    vshard.storage.cfg(cfg, os.getenv('STORAGE_UUID'))
+end
 
 dofile('/etc/tarantool/instances.enabled/qumomf/storage/storage.lua')
