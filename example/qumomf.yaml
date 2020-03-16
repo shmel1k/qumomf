@@ -29,7 +29,7 @@ shards:
           user: 'qumomf'
           password: 'qumomf'
           priority: 42
-          uuid: 'some_uuid_3'
+          uuid: 'f3ef657e-eb9a-4730-b420-7ea78d52797d'
           master: true
 
         - name: 'qumomf_2_s'
@@ -37,7 +37,7 @@ shards:
           user: 'qumomf'
           password: 'qumomf'
           priority: 4
-          uuid: 'some_uuid_4'
+          uuid: '7d64dd00-161e-4c99-8b3c-d3c4635e18d2'
           master: false
 
 routers:
