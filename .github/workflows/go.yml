@@ -35,3 +35,10 @@ jobs:
       
     - name: Test
       run: make test
+   
+    - name: install golangci-lint and goveralls
+      run: |
+          curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $GITHUB_WORKSPACE v1.23.6 
+
+    - name: run linters
+      run: $GITHUB_WORKSPACE/golangci-lint run
