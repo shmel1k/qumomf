@@ -26,6 +26,6 @@ test:
 
 .PHONY: integration_test
 integration_test:
-	cd example && go test -run Test_Router_AddAndCheckKey -v
+	cd example && go test -run Test_Router_AddAndCheckKey -v -tags=integration ./...
 	docker-compose -f example/docker-compose.yml stop storage_1_m storage_2_m
-	cd example && go test -run Test_Router_AddAndCheckKey -v
+	cd example && go test -run Test_Router_AddAndCheckKey -v -tags=integration ./...
