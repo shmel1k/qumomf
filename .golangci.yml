@@ -65,7 +65,6 @@ linters:
     - funlen
     - gochecknoinits
     - goconst
-    - gocritic
     - gocyclo
     - gofmt
     - goimports

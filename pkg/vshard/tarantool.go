@@ -40,7 +40,6 @@ func (c *InstanceConfig) withDefaults() {
 	}
 }
 
-// nolint
 func setupConnection(c InstanceConfig) *Connector {
 	c.withDefaults()
 	cfg := &tarantool.Options{

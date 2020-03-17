@@ -29,7 +29,7 @@ type ReplicaInfo struct {
 	Alerts []interface{}
 }
 
-func (i *ReplicaInfo) String() string {
+func (i ReplicaInfo) String() string {
 	return fmt.Sprintf("UUID: %s, Status: %s, State: %s, Lag: %f, Alerts: %v", i.UUID, i.Status, i.State, i.Lag, i.Alerts)
 }
 
