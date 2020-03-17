@@ -27,16 +27,16 @@ func NewCluster(routers []InstanceConfig, sets map[ShardUUID][]InstanceConfig) C
 
 	for uuid, v := range sets {
 		conns := make([]*Connector, 0, len(v))
-		for _, vv := range v {
-			conn := setupConnection(vv)
+		for j := range v {
+			conn := setupConnection(&sets[uuid][j])
 			conns = append(conns, conn)
 		}
 		res.replicas = append(res.replicas, NewReplicaSet(uuid, conns))
 	}
 
-	for _, r := range routers {
+	for i, r := range routers {
 		uuid := RouterUUID(r.UUID)
-		res.routers[uuid] = setupConnection(r)
+		res.routers[uuid] = setupConnection(&routers[i])
 	}
 
 	return res
