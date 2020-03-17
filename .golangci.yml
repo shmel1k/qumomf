@@ -25,11 +25,6 @@ linters-settings:
   goconst:
     min-len: 2
     min-occurrences: 2
-  depguard:
-    list-type: blacklist
-    packages:
-      # logging is allowed only by zerolog
-      - github.com/rs/zerolog/log
   misspell:
     locale: US
   goimports:
