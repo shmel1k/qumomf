@@ -40,7 +40,8 @@ func (c *InstanceConfig) withDefaults() {
 	}
 }
 
-func setupConnection(c *InstanceConfig) *Connector {
+// nolint
+func setupConnection(c InstanceConfig) *Connector {
 	c.withDefaults()
 	cfg := &tarantool.Options{
 		ConnectTimeout: c.ConnectTimeout,
@@ -52,7 +53,7 @@ func setupConnection(c *InstanceConfig) *Connector {
 
 	conn := tarantool.New(c.Addr, cfg)
 	return &Connector{
-		cfg:  *c,
+		cfg:  c,
 		conn: conn,
 	}
 }
