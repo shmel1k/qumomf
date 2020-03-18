@@ -42,6 +42,7 @@ linters-settings:
       - ifElseChain
       - octalLiteral
       - whyNoLint
+      - hugeParam
   funlen:
     lines: 300
     statements: 200
@@ -65,6 +66,7 @@ linters:
     - funlen
     - gochecknoinits
     - goconst
+    - gocritic
     - gocyclo
     - gofmt
     - goimports

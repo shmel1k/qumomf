@@ -20,6 +20,10 @@ down_docker:
 fmt:
 	go fmt ./...
 
+.PHONY: lint
+lint:
+	golangci-lint run -v ./...
+
 .PHONY: test
 test:
 	go test -count=1 ./...
