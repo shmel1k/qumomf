@@ -49,13 +49,14 @@ func TestLagQuorum(t *testing.T) {
 	l := &lagQuorum{}
 
 	for _, v := range testData {
+		vt := v
 		t.Run(v.testName, func(t *testing.T) {
-			uid, err := l.ChooseMaster(v.info)
-			if err != v.expectedErr {
-				t.Errorf("got err %v, expected %v", err, v.expectedErr)
+			uid, err := l.ChooseMaster(vt.info)
+			if err != vt.expectedErr {
+				t.Errorf("got err %v, expected %v", err, vt.expectedErr)
 			}
-			if uid != v.expectedUUID {
-				t.Errorf("got uid %q, got %q", uid, v.expectedUUID)
+			if uid != vt.expectedUUID {
+				t.Errorf("got uid %q, got %q", uid, vt.expectedUUID)
 			}
 		})
 	}

@@ -10,10 +10,10 @@ type ReplicaStatus string
 
 const (
 	NoProblem       ReplicaState = "NoProblem"
-	DeadMaster                   = "DeadMaster"
-	DeadSlave                    = "DeadSlave"
-	BadStorageInfo               = "BadStorageInfo"
-	HasActiveAlerts              = "HasActiveAlerts"
+	DeadMaster      ReplicaState = "DeadMaster"
+	DeadSlave       ReplicaState = "DeadSlave"
+	BadStorageInfo  ReplicaState = "BadStorageInfo"
+	HasActiveAlerts ReplicaState = "HasActiveAlerts"
 )
 
 const (
