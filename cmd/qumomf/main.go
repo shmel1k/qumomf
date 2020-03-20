@@ -5,13 +5,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/rs/zerolog/log"
+
 	"github.com/shmel1k/qumomf/internal/config"
-	"github.com/shmel1k/qumomf/pkg/quorum"
-	"github.com/shmel1k/qumomf/pkg/vshard"
-	"github.com/shmel1k/qumomf/pkg/vshard/orchestrator"
+	"github.com/shmel1k/qumomf/internal/coordinator"
 )
 
 var (
@@ -28,25 +26,20 @@ func main() {
 
 	log.Info().Msg("Starting qumomf")
 
-	cluster := vshard.NewCluster(cfg.Routers, cfg.Shards)
-
-	mon := orchestrator.NewMonitor(orchestrator.Config{
-		CheckTimeout: time.Second, // TODO: move to config
-	}, cluster)
-
-	elector := quorum.NewLagQuorum()
-	failover := orchestrator.NewSwapMasterFailover(cluster, elector)
-
-	analysisStream := mon.Serve()
-	failover.Serve(analysisStream)
+	qCoordinator := coordinator.New()
+	for clusterName, clusterCfg := range cfg.Clusters {
+		err = qCoordinator.RegisterCluster(clusterName, clusterCfg)
+		if err != nil {
+			log.Error().Err(err).Msgf("Could not register cluster with name %s", clusterName)
+			continue
+		}
+		log.Info().Msgf("New cluster '%s' has been registered", clusterName)
+	}
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-sigs
 
 	log.Info().Msgf("Received system signal: %s. Shutting down qumomf", sig)
-
-	mon.Shutdown()
-	failover.Shutdown()
-	cluster.Shutdown()
+	qCoordinator.Shutdown()
 }
