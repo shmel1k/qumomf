@@ -89,7 +89,7 @@ func (m *storageMonitor) analyzeReplicas(ctx context.Context, set vshard.Replica
 }
 
 func (m *storageMonitor) serveReplicaSet(r vshard.ReplicaSet, stream AnalysisWriteStream) {
-	tick := time.NewTicker(m.config.CheckTimeout)
+	tick := time.NewTicker(m.config.InstancePollPeriod)
 	defer tick.Stop()
 
 	ctx := context.Background()
