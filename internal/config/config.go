@@ -6,8 +6,13 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v2"
+)
 
-	"github.com/shmel1k/qumomf/pkg/vshard"
+const (
+	defaultUser           = "guest"
+	defaultPassword       = "guest"
+	defaultConnectTimeout = 5 * time.Second
+	defaultRequestTimeout = 5 * time.Second
 )
 
 type Config struct {
@@ -20,6 +25,7 @@ type Config struct {
 		RequestTimeout time.Duration `yaml:"request_timeout"`
 
 		Topology struct {
+			ReadOnly bool   `yaml:"readonly,omitempty"`
 			User     string `yaml:"user"`
 			Password string `yaml:"password"`
 		} `yaml:"topology"`
@@ -29,8 +35,35 @@ type Config struct {
 }
 
 type ClusterConfig struct {
-	Shards  map[vshard.ShardUUID][]vshard.InstanceConfig `yaml:"shards"`
-	Routers []vshard.InstanceConfig                      `yaml:"routers"`
+	ReadOnly *bool                       `yaml:"readonly,omitempty"`
+	Shards   map[string][]InstanceConfig `yaml:"shards"`
+	Routers  []InstanceConfig            `yaml:"routers"`
+}
+
+type InstanceConfig struct {
+	Name           string         `yaml:"name"`
+	Addr           string         `yaml:"addr"`
+	UUID           string         `yaml:"uuid"`
+	User           *string        `yaml:"user,omitempty"`
+	Password       *string        `yaml:"password,omitempty"`
+	ConnectTimeout *time.Duration `yaml:"connect_timeout,omitempty"`
+	RequestTimeout *time.Duration `yaml:"request_timeout,omitempty"`
+	Master         bool           `yaml:"master"`
+}
+
+func (c *InstanceConfig) withDefaults() {
+	if c == nil {
+		return
+	}
+
+	if c.ConnectTimeout == nil {
+		v := defaultConnectTimeout
+		c.ConnectTimeout = &v
+	}
+	if c.RequestTimeout == nil {
+		v := defaultRequestTimeout
+		c.RequestTimeout = &v
+	}
 }
 
 func Setup(path string) (*Config, error) {
@@ -48,6 +81,7 @@ func Setup(path string) (*Config, error) {
 	}
 
 	var cfg Config
+	cfg.withDefaults()
 	err = yaml.Unmarshal(data, &cfg)
 	if err != nil {
 		return nil, err
@@ -58,33 +92,61 @@ func Setup(path string) (*Config, error) {
 	return &cfg, nil
 }
 
-func (c *Config) overrideEmptyByGlobalConfigs() {
-	overrideFn := func(instCfg vshard.InstanceConfig) {
-		globalCfg := c.Tarantool
-
-		if instCfg.ConnectTimeout == 0 {
-			instCfg.ConnectTimeout = globalCfg.ConnectTimeout
-		}
-		if instCfg.RequestTimeout == 0 {
-			instCfg.RequestTimeout = globalCfg.RequestTimeout
-		}
-		if instCfg.User == "" {
-			instCfg.User = globalCfg.Topology.User
-		}
-		if instCfg.Password == "" {
-			instCfg.Password = globalCfg.Topology.Password
-		}
+func (c *Config) withDefaults() {
+	if c == nil {
+		return
 	}
 
-	for _, clusterCfg := range c.Clusters {
-		for _, set := range clusterCfg.Shards {
-			for _, shardCfg := range set {
-				overrideFn(shardCfg)
-			}
+	topology := &c.Tarantool.Topology
+	topology.ReadOnly = true
+	topology.User = defaultUser
+	topology.Password = defaultPassword
+}
+
+func (c *Config) overrideEmptyByGlobalConfigs() {
+	overrideFn := func(instCfg *InstanceConfig) {
+		globalCfg := c.Tarantool
+
+		if instCfg.ConnectTimeout == nil {
+			v := globalCfg.ConnectTimeout
+			instCfg.ConnectTimeout = &v
+		}
+		if instCfg.RequestTimeout == nil {
+			v := globalCfg.RequestTimeout
+			instCfg.RequestTimeout = &v
+		}
+		if instCfg.User == nil {
+			v := globalCfg.Topology.User
+			instCfg.User = &v
+		}
+		if instCfg.Password == nil {
+			v := globalCfg.Topology.Password
+			instCfg.Password = &v
 		}
 
-		for _, routerCfg := range clusterCfg.Routers {
+		// The last hope: set hardcoded predefined values.
+		instCfg.withDefaults()
+	}
+
+	for clusterUUID, clusterCfg := range c.Clusters {
+		if clusterCfg.ReadOnly == nil {
+			v := c.Tarantool.Topology.ReadOnly
+			clusterCfg.ReadOnly = &v
+		}
+
+		for shardUUID, shard := range clusterCfg.Shards {
+			for i := 0; i < len(shard); i++ {
+				shardCfg := &shard[i]
+				overrideFn(shardCfg)
+			}
+			clusterCfg.Shards[shardUUID] = shard
+		}
+
+		for i := 0; i < len(clusterCfg.Routers); i++ {
+			routerCfg := &clusterCfg.Routers[i]
 			overrideFn(routerCfg)
 		}
+
+		c.Clusters[clusterUUID] = clusterCfg
 	}
 }

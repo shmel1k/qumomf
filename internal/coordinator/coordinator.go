@@ -37,7 +37,7 @@ func (c Coordinator) RegisterCluster(name string, cfg config.ClusterConfig) erro
 		return ErrClusterAlreadyExist
 	}
 
-	cluster := vshard.NewCluster(cfg.Routers, cfg.Shards)
+	cluster := vshard.NewCluster(name, cfg)
 	c.clusters[name] = cluster
 	c.addShutdownTask(cluster.Shutdown)
 

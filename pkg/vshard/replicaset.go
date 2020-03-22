@@ -17,22 +17,11 @@ type replicaset struct {
 	connectors map[ReplicaUUID]*Connector
 }
 
-func NewReplicaSet(shardUUID ShardUUID, conns []*Connector) ReplicaSet {
-	mp := make(map[ReplicaUUID]*Connector, len(conns))
-
-	var master ReplicaUUID
-	for _, v := range conns {
-		uuid := ReplicaUUID(v.cfg.UUID)
-		mp[uuid] = v
-		if v.cfg.Master {
-			master = uuid
-		}
-	}
-
+func NewReplicaSet(shardUUID ShardUUID, masterUUID ReplicaUUID, connectors map[ReplicaUUID]*Connector) ReplicaSet {
 	return &replicaset{
 		shardUUID:  shardUUID,
-		masterUUID: master,
-		connectors: mp,
+		masterUUID: masterUUID,
+		connectors: connectors,
 	}
 }
 
