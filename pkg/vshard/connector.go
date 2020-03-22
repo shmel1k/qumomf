@@ -7,7 +7,6 @@ import (
 )
 
 type Connector struct {
-	cfg  InstanceConfig
 	conn *tarantool.Connector
 }
 

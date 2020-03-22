@@ -80,7 +80,7 @@ func (m *storageMonitor) analyzeReplicas(ctx context.Context, set vshard.Replica
 		}
 
 		setInfo = append(setInfo, replicaInfo)
-		log.Info().Msgf("%+v\n", replicaInfo)
+		log.Info().Msgf("%+v", replicaInfo)
 	}
 	return ReplicaSetAnalysis{
 		Set:  set,
@@ -99,11 +99,24 @@ func (m *storageMonitor) serveReplicaSet(r vshard.ReplicaSet, stream AnalysisWri
 		case <-m.stop:
 			return
 		case <-tick.C:
-			if !m.cluster.HasActiveRecovery() {
-				stream <- m.analyzeReplicas(ctx, r)
+			analysis := m.analyzeReplicas(ctx, r)
+			if m.shouldBeAnalysisChecked() {
+				stream <- analysis
 			}
 		}
 	}
+}
+
+func (m *storageMonitor) shouldBeAnalysisChecked() bool {
+	if m.cluster.ReadOnly() {
+		log.Debug().Msgf("Cluster '%s' is readonly. Skip check and recovery step for all shards.", m.cluster.Name())
+		return false
+	}
+	if m.cluster.HasActiveRecovery() {
+		log.Debug().Msgf("Cluster '%s' has active recovery. Skip check and recovery step for all shards.", m.cluster.Name())
+		return false
+	}
+	return true
 }
 
 func (m *storageMonitor) Serve() AnalysisReadStream {
