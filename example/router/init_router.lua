@@ -1,12 +1,12 @@
 vshard = require('vshard')
 
 local cfg = {
-    memtx_memory = 8 * 1024 * 1024 * 1024,
-    bucket_count = 50000,
+    memtx_memory = 100 * 1024 * 1024,
+    bucket_count = 10000,
     rebalancer_disbalance_threshold = 10,
     rebalancer_max_receiving = 100,
 
-    -- The maximum number of checkpoints that the daemon maintans
+    -- The maximum number of checkpoints that the daemon maintains
     checkpoint_count = 6;
 
     -- Don't abort recovery if there is an error while reading

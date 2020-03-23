@@ -4,13 +4,13 @@ vshard = require('vshard')
 local IDX_KEY = 1
 local IDX_VALUE = 2
 
--- NOTE(a.petrukhin): it is an example configuration.
 local cfg = {
-    memtx_memory = 8 * 1024 * 1024 * 1024,
-    bucket_count = 50000,
+    memtx_memory = 100 * 1024 * 1024,
+    bucket_count = 10000,
     rebalancer_disbalance_threshold = 10,
     rebalancer_max_receiving = 100,
-    -- The maximum number of checkpoints that the daemon maintans
+
+    -- The maximum number of checkpoints that the daemon maintains
     checkpoint_count = 6;
 
     -- Don't abort recovery if there is an error while reading
@@ -66,7 +66,7 @@ cfg.listen = 3301
 vshard.storage.cfg(cfg, UUID)
 
 box.once("init", function()
-    box.schema.user.create('qumomf', {password='qumomf', if_not_exists=true})
+    box.schema.user.create('qumomf', { password = 'qumomf', if_not_exists = true })
     box.schema.user.grant('qumomf', 'read,write,create,execute', 'universe')
 
     local space = box.schema.create_space("qumomf", {
