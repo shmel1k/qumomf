@@ -1,18 +1,11 @@
 package orchestrator
 
 import (
-	"context"
 	"time"
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/viciious/go-tarantool"
-
 	"github.com/shmel1k/qumomf/pkg/vshard"
-)
-
-const (
-	funcStorageInfo = "vshard.storage.info"
 )
 
 type Monitor interface {
@@ -20,7 +13,7 @@ type Monitor interface {
 	Shutdown()
 }
 
-func NewMonitor(cfg Config, cluster vshard.Cluster) Monitor {
+func NewMonitor(cfg Config, cluster *vshard.Cluster) Monitor {
 	return &storageMonitor{
 		config:  cfg,
 		cluster: cluster,
@@ -30,107 +23,104 @@ func NewMonitor(cfg Config, cluster vshard.Cluster) Monitor {
 
 type storageMonitor struct {
 	config  Config
-	cluster vshard.Cluster
+	cluster *vshard.Cluster
 	stop    chan struct{}
 }
 
-func (m *storageMonitor) analyzeReplicas(ctx context.Context, set vshard.ReplicaSet) ReplicaSetAnalysis {
-	q := &tarantool.Call{
-		Name: funcStorageInfo,
-	}
+func (m *storageMonitor) Serve() AnalysisReadStream {
+	stream := NewAnalysisStream()
+	go m.continuousDiscovery(stream)
 
-	setInfo := vshard.ReplicaSetInfo{}
-	masterUUID := set.GetMaster()
-
-	for uuid, conn := range set.GetConnectors() {
-		status := vshard.StatusFollow
-		if uuid == masterUUID {
-			status = vshard.StatusMaster
-		}
-
-		replicaInfo := vshard.ReplicaInfo{
-			UUID:   uuid,
-			Status: status,
-			State:  vshard.NoProblem,
-		}
-
-		infoResponse := conn.Exec(ctx, q)
-		if infoResponse.Error == nil {
-			info, err := parseStorageInfo(infoResponse.Data)
-			if err == nil {
-				replicaInfo.Lag = info.Replication.Lag
-				replicaInfo.Alerts = info.Alerts
-
-				if len(info.Alerts) > 0 {
-					replicaInfo.State = vshard.HasActiveAlerts
-				}
-			} else {
-				log.Error().Msgf("%s", err.Error())
-				replicaInfo.State = vshard.BadStorageInfo
-			}
-		} else {
-			log.Error().Msgf("%s", infoResponse.Error.Error())
-
-			switch status {
-			case vshard.StatusMaster:
-				replicaInfo.State = vshard.DeadMaster
-			case vshard.StatusFollow:
-				replicaInfo.State = vshard.DeadSlave
-			}
-		}
-
-		setInfo = append(setInfo, replicaInfo)
-		log.Info().Msgf("%+v", replicaInfo)
-	}
-	return ReplicaSetAnalysis{
-		Set:  set,
-		Info: setInfo,
-	}
+	return stream
 }
 
-func (m *storageMonitor) serveReplicaSet(r vshard.ReplicaSet, stream AnalysisWriteStream) {
-	tick := time.NewTicker(m.config.InstancePollPeriod)
-	defer tick.Stop()
+func (m *storageMonitor) continuousDiscovery(stream AnalysisWriteStream) {
+	recoveryTick := time.NewTicker(m.config.RecoveryPollTime)
+	defer recoveryTick.Stop()
+	discoveryTick := time.NewTicker(m.config.DiscoveryPollTime)
+	defer discoveryTick.Stop()
 
-	ctx := context.Background()
+	continuousDiscoveryStartTime := time.Now()
+	checkAndRecoverWaitPeriod := 3 * m.config.DiscoveryPollTime
+
+	runCheckAndRecoverOperationsTimeRipe := func() bool {
+		return time.Since(continuousDiscoveryStartTime) >= checkAndRecoverWaitPeriod
+	}
 
 	for {
 		select {
 		case <-m.stop:
 			return
-		case <-tick.C:
-			analysis := m.analyzeReplicas(ctx, r)
-			if m.shouldBeAnalysisChecked() {
-				stream <- analysis
+		case <-discoveryTick.C:
+			go m.cluster.Discover()
+		case <-recoveryTick.C:
+			// NOTE: we might improve this place checking the delay only on start.
+			if runCheckAndRecoverOperationsTimeRipe() {
+				for _, set := range m.cluster.ReplicaSets() {
+					go func(set vshard.ReplicaSet) {
+						analysis := m.analyze(set)
+						if analysis != nil {
+							stream <- analysis
+						}
+					}(set)
+				}
+			} else {
+				log.Debug().Msgf("Waiting for %+v seconds to pass before running failure detection/recovery", checkAndRecoverWaitPeriod.Seconds())
 			}
 		}
 	}
 }
 
-func (m *storageMonitor) shouldBeAnalysisChecked() bool {
-	if m.cluster.ReadOnly() {
-		log.Debug().Msgf("Cluster '%s' is readonly. Skip check and recovery step for all shards.", m.cluster.Name())
-		return false
-	}
-	if m.cluster.HasActiveRecovery() {
-		log.Debug().Msgf("Cluster '%s' has active recovery. Skip check and recovery step for all shards.", m.cluster.Name())
-		return false
-	}
-	return true
-}
+func (m *storageMonitor) analyze(set vshard.ReplicaSet) *ReplicationAnalysis {
+	// TODO: make it smarter - https://github.com/shmel1k/qumomf/issues/3
 
-func (m *storageMonitor) Serve() AnalysisReadStream {
-	stream := NewAnalysisStream()
+	countReplicas := 0
+	countWorkingReplicas := 0
+	countReplicatingReplicas := 0
+	for _, r := range set.Followers() {
+		countReplicas++
+		if r.LastCheckValid {
+			countWorkingReplicas++
 
-	go func() {
-		for _, v := range m.cluster.GetReplicaSets() {
-			go func(set vshard.ReplicaSet) {
-				m.serveReplicaSet(set, stream)
-			}(v)
+			if !r.HasAlert(vshard.AlertUnreachableMaster) {
+				countReplicatingReplicas++
+			}
 		}
-	}()
+	}
 
-	return stream
+	master, err := set.Master()
+	if err != nil {
+		// Something really weird but we have data inconsistency here.
+		// Master UUID not found in ReplicaSet.
+		log.Error().Msgf("Failed to analyze replicaset state: master UUID '%s' not found", set.MasterUUID)
+		return nil
+	}
+	isMasterDead := !master.LastCheckValid
+
+	state := NoProblem
+	if isMasterDead && countWorkingReplicas == countReplicas && countReplicatingReplicas == countReplicas {
+		if countReplicas == 0 {
+			state = DeadMasterWithoutFollowers
+		} else {
+			state = DeadMaster
+		}
+	} else if isMasterDead && countWorkingReplicas <= countReplicas && countReplicatingReplicas < countReplicas {
+		if countWorkingReplicas == 0 {
+			state = DeadMasterAndFollowers
+		} else {
+			state = DeadMasterAndSomeFollowers
+		}
+	} else if countReplicas > 0 && countReplicatingReplicas == 0 {
+		state = AllMasterFollowersNotReplicating
+	}
+
+	return &ReplicationAnalysis{
+		Set:                      set,
+		CountReplicas:            countReplicas,
+		CountWorkingReplicas:     countWorkingReplicas,
+		CountReplicatingReplicas: countReplicatingReplicas,
+		State:                    state,
+	}
 }
 
 func (m *storageMonitor) Shutdown() {

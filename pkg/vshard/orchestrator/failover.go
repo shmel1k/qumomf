@@ -20,12 +20,12 @@ type Failover interface {
 }
 
 type swapMasterFailover struct {
-	cluster vshard.Cluster
+	cluster *vshard.Cluster
 	elector quorum.Quorum
 	stop    chan struct{}
 }
 
-func NewSwapMasterFailover(cluster vshard.Cluster, elector quorum.Quorum) Failover {
+func NewSwapMasterFailover(cluster *vshard.Cluster, elector quorum.Quorum) Failover {
 	return &swapMasterFailover{
 		cluster: cluster,
 		elector: elector,
@@ -42,7 +42,9 @@ func (f *swapMasterFailover) Serve(stream AnalysisReadStream) {
 			case <-f.stop:
 				return
 			case analysis := <-stream:
-				f.checkAndRecover(ctx, analysis)
+				if f.shouldBeAnalysisChecked() {
+					f.checkAndRecover(ctx, analysis)
+				}
 			}
 		}
 	}()
@@ -52,30 +54,47 @@ func (f *swapMasterFailover) Shutdown() {
 	f.stop <- struct{}{}
 }
 
-func (f *swapMasterFailover) checkAndRecover(ctx context.Context, analysis ReplicaSetAnalysis) {
-	info := analysis.Info
-	replicaSet := analysis.Set
+func (f *swapMasterFailover) shouldBeAnalysisChecked() bool {
+	if f.cluster.ReadOnly() {
+		log.Debug().Msgf("Cluster '%s' is readonly. Skip check and recovery step for all shards.", f.cluster.Name)
+		return false
+	}
+	if f.cluster.HasActiveRecovery() {
+		log.Debug().Msgf("Cluster '%s' has active recovery. Skip check and recovery step for all shards.", f.cluster.Name)
+		return false
+	}
+	return true
+}
 
-	for _, replicaInfo := range info {
-		uuid := replicaInfo.UUID
-		switch replicaInfo.State {
-		case vshard.DeadMaster:
-			log.Info().Msgf("Found a dead master. Replica UUID: %s. Start rebuilding the shard topology.", uuid)
-			f.cluster.StartRecovery()
-			f.promoteFollowerToMaster(ctx, replicaSet, info)
-			f.cluster.StopRecovery()
-		case vshard.DeadSlave:
-			log.Info().Msgf("Found a dead slave. Replica UUID: %s", uuid)
-		case vshard.BadStorageInfo:
-			log.Info().Msgf("Found a replica with unknown state. Replica UUID: %s", uuid)
-		}
+func (f *swapMasterFailover) checkAndRecover(ctx context.Context, analysis *ReplicationAnalysis) {
+	set := analysis.Set
+
+	switch analysis.State {
+	case DeadMaster:
+		f.cluster.StartRecovery()
+		log.Info().Msgf("Master cannot be reached by qumomf. Will run failover. ReplicaSet snapshot: %s", set)
+		f.promoteFollowerToMaster(ctx, set)
+		f.cluster.StopRecovery()
+	case DeadMasterAndSomeFollowers:
+		f.cluster.StartRecovery()
+		log.Info().Msgf("Master cannot be reached by qumomf and some of its followers are unreachable. Will run failover. ReplicaSet snapshot: %s", set)
+		f.promoteFollowerToMaster(ctx, set)
+		f.cluster.StopRecovery()
+	case DeadMasterAndFollowers:
+		log.Info().Msgf("Master cannot be reached by qumomf and none of its followers is replicating. No actions will be applied. ReplicaSet snapshot: %s", set)
+	case AllMasterFollowersNotReplicating:
+		log.Info().Msgf("Master is reachable but none of its replicas is replicating. No actions will be applied. ReplicaSet snapshot: %s", set)
+	case DeadMasterWithoutFollowers:
+		log.Info().Msgf("Master cannot be reached by qumomf and has no followers. No actions will be applied. ReplicaSet snapshot: %s", set)
+	case NoProblem:
+		// Nothing to do, everything is OK.
 	}
 }
 
-func (f *swapMasterFailover) promoteFollowerToMaster(ctx context.Context, r vshard.ReplicaSet, info vshard.ReplicaSetInfo) {
-	candidateUUID, err := f.elector.ChooseMaster(info)
+func (f *swapMasterFailover) promoteFollowerToMaster(ctx context.Context, badSet vshard.ReplicaSet) {
+	candidateUUID, err := f.elector.ChooseMaster(badSet)
 	if err != nil {
-		log.Info().Msgf("Failed to elect a new master: %s", err)
+		log.Error().Msgf("Failed to elect a new master: %s", err)
 		return
 	}
 
@@ -84,31 +103,31 @@ func (f *swapMasterFailover) promoteFollowerToMaster(ctx context.Context, r vsha
 	q := &tarantool.Call{
 		Name: funcChangeMaster,
 		Tuple: []interface{}{
-			string(r.GetShardUUID()), string(r.GetMaster()), string(candidateUUID),
+			string(badSet.UUID), string(badSet.MasterUUID), string(candidateUUID),
 		},
 	}
 
-	// Update configuration on shards.
-	for _, r := range f.cluster.GetReplicaSets() {
-		for uuid, conn := range r.GetConnectors() {
+	// Update configuration on replica sets.
+	for _, set := range f.cluster.ReplicaSets() {
+		for _, inst := range set.Instances {
+			conn := f.cluster.Pool.Get(inst.URI, string(inst.UUID))
 			resp := conn.Exec(ctx, q)
 			if resp.Error == nil {
-				log.Info().Msgf("Configuration was updated on node %s", uuid)
+				log.Info().Msgf("Configuration was updated on node '%s'", inst.UUID)
 			} else {
-				log.Info().Msgf("Failed to update configuration on node %s: %s", uuid, resp.Error)
+				log.Error().Msgf("Failed to update configuration on node '%s': %s", inst.UUID, resp.Error)
 			}
 		}
 	}
 
 	// Update configuration on routers.
-	for uuid, conn := range f.cluster.GetRouterConnectors() {
+	for _, r := range f.cluster.Routers() {
+		conn := f.cluster.Pool.Get(r.URI, string(r.UUID))
 		resp := conn.Exec(ctx, q)
 		if resp.Error == nil {
-			log.Info().Msgf("Configuration was updated on router %s", uuid)
+			log.Info().Msgf("Configuration was updated on router '%s'", r.UUID)
 		} else {
-			log.Info().Msgf("Failed to update configuration on router %s: %s", uuid, resp.Error)
+			log.Error().Msgf("Failed to update configuration on router '%s': %s", r.UUID, resp.Error)
 		}
 	}
-
-	r.SetMaster(candidateUUID)
 }

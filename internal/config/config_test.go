@@ -23,96 +23,63 @@ func TestSetup_ValidPath(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, cfg)
 
-	assert.Equal(t, ":1488", cfg.Qumomf.Port)
+	assert.Equal(t, ":8080", cfg.Qumomf.Port)
+	assert.True(t, cfg.Qumomf.ReadOnly)
+	assert.Equal(t, 60*time.Second, cfg.Qumomf.ClusterDiscoveryTime)
+	assert.Equal(t, 5*time.Second, cfg.Qumomf.ClusterRecoveryTime)
 
-	assert.Equal(t, 1*time.Second, cfg.Tarantool.RequestTimeout)
-	assert.Equal(t, 1*time.Second, cfg.Tarantool.ConnectTimeout)
+	assert.Equal(t, 1*time.Second, *cfg.Connection.RequestTimeout)
+	assert.Equal(t, 1*time.Second, *cfg.Connection.ConnectTimeout)
 
-	topology := cfg.Tarantool.Topology
-	assert.True(t, topology.ReadOnly)
-	assert.Equal(t, "qumomf", topology.User)
-	assert.Equal(t, "qumomf", topology.Password)
+	connOpts := cfg.Connection
+	require.NotNil(t, connOpts)
+	assert.Equal(t, "qumomf", *connOpts.User)
+	assert.Equal(t, "qumomf", *connOpts.Password)
+	assert.Equal(t, 1*time.Second, *connOpts.ConnectTimeout)
+	assert.Equal(t, 1*time.Second, *connOpts.RequestTimeout)
 
 	expected := map[string]ClusterConfig{
 		"qumomf_sandbox_1": {
-			ReadOnly: newBool(false),
-			Shards: map[string][]InstanceConfig{
-				"7432f072-c00b-4498-b1a6-6d9547a8a150": {
-					{
-						Name:           "qumomf_1_m",
-						Addr:           "127.0.0.1:9303",
-						UUID:           "294e7310-13f0-4690-b136-169599e87ba0",
-						User:           newString("qumomf"),
-						Password:       newString("qumomf"),
-						ConnectTimeout: newDuration(1 * time.Second),
-						RequestTimeout: newDuration(1 * time.Second),
-						Master:         true,
-					},
-				},
-				"5065fb5f-5f40-498e-af79-43887ba3d1ec": {
-					{
-						Name:           "qumomf_2_m",
-						Addr:           "127.0.0.1:9305",
-						UUID:           "f3ef657e-eb9a-4730-b420-7ea78d52797d",
-						User:           newString("qumomf"),
-						Password:       newString("qumomf"),
-						ConnectTimeout: newDuration(1 * time.Second),
-						RequestTimeout: newDuration(1 * time.Second),
-						Master:         true,
-					},
-					{
-						Name:           "qumomf_2_s",
-						Addr:           "127.0.0.1:9306",
-						UUID:           "7d64dd00-161e-4c99-8b3c-d3c4635e18d2",
-						User:           newString("qumomf"),
-						Password:       newString("qumomf"),
-						ConnectTimeout: newDuration(1 * time.Second),
-						RequestTimeout: newDuration(1 * time.Second),
-						Master:         false,
-					},
-				},
+			Connection: &ConnectConfig{
+				User:           newString("qumomf"),
+				Password:       newString("qumomf"),
+				ConnectTimeout: newDuration(1 * time.Second),
+				RequestTimeout: newDuration(1 * time.Second),
 			},
-			Routers: []InstanceConfig{
+			ReadOnly: newBool(false),
+			OverrideURIRules: map[string]string{
+				"qumomf_1_m.ddk:3301": "127.0.0.1:9303",
+			},
+			Routers: []RouterConfig{
 				{
-					Name:           "router_1",
-					Addr:           "127.0.0.1:9301",
-					UUID:           "router_1_uuid",
-					User:           newString("qumomf"),
-					Password:       newString("qumomf"),
-					ConnectTimeout: newDuration(1 * time.Second),
-					RequestTimeout: newDuration(1 * time.Second),
-					Master:         false,
+					Name: "sandbox1-router1",
+					Addr: "127.0.0.1:9301",
+					UUID: "294e7310-13f0-4690-b136-169599e87ba0",
+				},
+				{
+					Name: "sandbox1-router2",
+					Addr: "127.0.0.1:9302",
+					UUID: "f3ef657e-eb9a-4730-b420-7ea78d52797d",
 				},
 			},
 		},
 		"qumomf_sandbox_2": {
+			Connection: &ConnectConfig{
+				User:           newString("tnt"),
+				Password:       newString("tnt"),
+				ConnectTimeout: newDuration(10 * time.Second),
+				RequestTimeout: newDuration(10 * time.Second),
+			},
 			ReadOnly: newBool(true),
-			Routers: []InstanceConfig{
+			Routers: []RouterConfig{
 				{
-					Name:           "router_2",
-					Addr:           "127.0.0.1:7301",
-					UUID:           "router_2_uuid",
-					User:           newString("tnt"),
-					Password:       newString("tnt"),
-					ConnectTimeout: newDuration(10 * time.Second),
-					RequestTimeout: newDuration(10 * time.Second),
-					Master:         false,
+					Name: "sandbox2-router1",
+					Addr: "127.0.0.1:7301",
+					UUID: "38dbe90b-9bca-4766-a98c-f02e56ddf986",
 				},
 			},
 		},
 	}
 
 	assert.Equal(t, expected, cfg.Clusters)
-}
-
-func newBool(v bool) *bool {
-	return &v
-}
-
-func newDuration(v time.Duration) *time.Duration {
-	return &v
-}
-
-func newString(v string) *string {
-	return &v
 }

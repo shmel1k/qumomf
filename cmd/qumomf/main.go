@@ -28,17 +28,17 @@ func main() {
 
 	qCoordinator := coordinator.New()
 	for clusterName, clusterCfg := range cfg.Clusters {
-		err = qCoordinator.RegisterCluster(clusterName, clusterCfg)
+		err = qCoordinator.RegisterCluster(clusterName, clusterCfg, cfg)
 		if err != nil {
-			log.Error().Err(err).Msgf("Could not register cluster with name %s", clusterName)
+			log.Err(err).Msgf("Could not register cluster with name %s", clusterName)
 			continue
 		}
 		log.Info().Msgf("New cluster '%s' has been registered", clusterName)
 	}
 
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	sig := <-sigs
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-interrupt
 
 	log.Info().Msgf("Received system signal: %s. Shutting down qumomf", sig)
 	qCoordinator.Shutdown()

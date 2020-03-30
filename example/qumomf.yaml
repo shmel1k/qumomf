@@ -1,46 +1,26 @@
 qumomf:
   port: ':1488'
+  readonly: true
+  cluster_discovery_time: '5s'
+  cluster_recovery_time: '1s'
 
-tarantool:
+connection:
+  user: 'qumomf'
+  password: 'qumomf'
   connect_timeout: '1s'
   request_timeout: '1s'
-
-  topology:
-    readonly: true
-    user: 'qumomf'
-    password: 'qumomf'
 
 clusters:
   qumomf_sandbox:
     readonly: false
+
+    override_uri_rules:
+      'qumomf_1_m.ddk:3301': '127.0.0.1:9303'
+      'qumomf_1_s.ddk:3301': '127.0.0.1:9304'
+      'qumomf_2_m.ddk:3301': '127.0.0.1:9305'
+      'qumomf_2_s.ddk:3301': '127.0.0.1:9306'
+
     routers:
       - name: 'router_1'
         uuid: 'router_1_uuid'
         addr: '127.0.0.1:9301'
-
-    shards:
-      7432f072-c00b-4498-b1a6-6d9547a8a150:
-        - name: 'qumomf_1_m'
-          uuid: '294e7310-13f0-4690-b136-169599e87ba0'
-          addr: '127.0.0.1:9303'
-          priority: 42
-          master: true
-
-        - name: 'qumomf_1_s'
-          uuid: 'cd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1'
-          addr: '127.0.0.1:9304'
-          priority: 4
-          master: false
-
-      5065fb5f-5f40-498e-af79-43887ba3d1ec:
-        - name: 'qumomf_2_m'
-          uuid: 'f3ef657e-eb9a-4730-b420-7ea78d52797d'
-          addr: '127.0.0.1:9305'
-          priority: 42
-          master: true
-
-        - name: 'qumomf_2_s'
-          uuid: '7d64dd00-161e-4c99-8b3c-d3c4635e18d2'
-          addr: '127.0.0.1:9306'
-          priority: 4
-          master: false

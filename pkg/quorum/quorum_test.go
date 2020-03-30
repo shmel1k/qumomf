@@ -8,41 +8,65 @@ import (
 
 func TestLagQuorum(t *testing.T) {
 	var testData = []struct {
-		info         vshard.ReplicaSetInfo
 		testName     string
-		expectedUUID vshard.ReplicaUUID
+		set          vshard.ReplicaSet
+		expectedUUID vshard.InstanceUUID
 		expectedErr  error
 	}{
 		{
-			info: vshard.ReplicaSetInfo{
-				vshard.ReplicaInfo{
-					Lag:    0.01,
-					Status: vshard.StatusFollow,
-					UUID:   "1",
-				},
-				vshard.ReplicaInfo{
-					Lag:    0.05,
-					Status: vshard.StatusFollow,
-					UUID:   "2",
+			testName: "ShouldSelectExpectedReplica",
+			set: vshard.ReplicaSet{
+				Instances: []vshard.Instance{
+					{
+						UUID: "1",
+						StorageInfo: vshard.StorageInfo{
+							ReplicationStatus: vshard.StatusMaster,
+						},
+					},
+					{
+						UUID: "2",
+						Upstream: &vshard.Upstream{
+							Status: vshard.UpstreamFollow,
+							Lag:    0.05,
+						},
+						StorageInfo: vshard.StorageInfo{
+							ReplicationStatus: vshard.StatusFollow,
+						},
+					},
+					{
+						UUID: "3",
+						Upstream: &vshard.Upstream{
+							Status: vshard.UpstreamFollow,
+							Lag:    0.1,
+						},
+						StorageInfo: vshard.StorageInfo{
+							ReplicationStatus: vshard.StatusFollow,
+						},
+					},
 				},
 			},
-			expectedUUID: "1",
-			testName:     "ok",
+			expectedUUID: "2",
 		},
 		{
-			info: vshard.ReplicaSetInfo{
-				vshard.ReplicaInfo{
-					Status: vshard.StatusMaster,
-					UUID:   "1",
+			testName: "NoFollowers_ShouldReturnErr",
+			set: vshard.ReplicaSet{
+				Instances: []vshard.Instance{
+					{
+						UUID: "1",
+						StorageInfo: vshard.StorageInfo{
+							ReplicationStatus: vshard.StatusMaster,
+						},
+					},
 				},
 			},
-			expectedErr: ErrNoReplicaFound,
-			testName:    "only master",
+			expectedErr: ErrNoFollowers,
 		},
 		{
-			info:        nil,
-			expectedErr: ErrEmptyInfo,
-			testName:    "empty info",
+			testName: "EmptySet_ShouldReturnErr",
+			set: vshard.ReplicaSet{
+				Instances: nil,
+			},
+			expectedErr: ErrNoFollowers,
 		},
 	}
 
@@ -51,7 +75,7 @@ func TestLagQuorum(t *testing.T) {
 	for _, v := range testData {
 		vt := v
 		t.Run(v.testName, func(t *testing.T) {
-			uid, err := l.ChooseMaster(vt.info)
+			uid, err := l.ChooseMaster(vt.set)
 			if err != vt.expectedErr {
 				t.Errorf("got err %v, expected %v", err, vt.expectedErr)
 			}

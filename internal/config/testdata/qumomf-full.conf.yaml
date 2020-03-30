@@ -1,47 +1,38 @@
 qumomf:
-  port: ':1488'
+  port: ':8080'
+  readonly: true
+  cluster_discovery_time: '60s'
+  cluster_recovery_time: '5s'
 
-tarantool:
+connection:
+  user: 'qumomf'
+  password: 'qumomf'
   connect_timeout: '1s'
   request_timeout: '1s'
-
-  topology:
-    readonly: true
-    user: 'qumomf'
-    password: 'qumomf'
 
 clusters:
   qumomf_sandbox_1:
     readonly: false
+
+    override_uri_rules:
+      'qumomf_1_m.ddk:3301': '127.0.0.1:9303'
+
     routers:
-      - name: 'router_1'
-        uuid: 'router_1_uuid'
+      - name: 'sandbox1-router1'
         addr: '127.0.0.1:9301'
-
-    shards:
-      7432f072-c00b-4498-b1a6-6d9547a8a150:
-        - name: 'qumomf_1_m'
-          uuid: '294e7310-13f0-4690-b136-169599e87ba0'
-          addr: '127.0.0.1:9303'
-          master: true
-
-      5065fb5f-5f40-498e-af79-43887ba3d1ec:
-        - name: 'qumomf_2_m'
-          uuid: 'f3ef657e-eb9a-4730-b420-7ea78d52797d'
-          addr: '127.0.0.1:9305'
-          master: true
-
-        - name: 'qumomf_2_s'
-          uuid: '7d64dd00-161e-4c99-8b3c-d3c4635e18d2'
-          addr: '127.0.0.1:9306'
-          master: false
+        uuid: '294e7310-13f0-4690-b136-169599e87ba0'
+      - name: 'sandbox1-router2'
+        addr: '127.0.0.1:9302'
+        uuid: 'f3ef657e-eb9a-4730-b420-7ea78d52797d'
 
   qumomf_sandbox_2:
+    connection:
+      user: 'tnt'
+      password: 'tnt'
+      connect_timeout: 10s
+      request_timeout: 10s
+
     routers:
-      - name: 'router_2'
-        uuid: 'router_2_uuid'
+      - name: 'sandbox2-router1'
+        uuid: '38dbe90b-9bca-4766-a98c-f02e56ddf986'
         addr: '127.0.0.1:7301'
-        user: 'tnt'
-        password: 'tnt'
-        connect_timeout: 10s
-        request_timeout: 10s

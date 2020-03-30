@@ -7,17 +7,17 @@ import (
 )
 
 var (
-	ErrEmptyInfo      = errors.New("quorum: empty shard info given")
-	ErrNoReplicaFound = errors.New("quorum: no available replica found")
+	ErrNoFollowers      = errors.New("quorum: ReplicaSet does not have any followers")
+	ErrNoCandidateFound = errors.New("quorum: no available candidate found")
 )
 
 const (
-	maxLag = float64(100)
+	maxLag = float64(1000)
 )
 
 type Quorum interface {
 	// ChooseMaster selects new master and returns back its uuid
-	ChooseMaster(vshard.ReplicaSetInfo) (vshard.ReplicaUUID, error)
+	ChooseMaster(set vshard.ReplicaSet) (vshard.InstanceUUID, error)
 }
 
 type lagQuorum struct {
@@ -27,22 +27,27 @@ func NewLagQuorum() Quorum {
 	return &lagQuorum{}
 }
 
-func (*lagQuorum) ChooseMaster(info vshard.ReplicaSetInfo) (vshard.ReplicaUUID, error) {
-	if len(info) == 0 {
-		return "", ErrEmptyInfo
+func (*lagQuorum) ChooseMaster(set vshard.ReplicaSet) (vshard.InstanceUUID, error) {
+	followers := set.Followers()
+	if len(followers) == 0 {
+		return "", ErrNoFollowers
 	}
 
 	minLag := maxLag
-	minUUID := vshard.ReplicaUUID("")
-	for _, r := range info {
-		if r.Lag < minLag && r.Status == vshard.StatusFollow {
-			minLag = r.Lag
+	minUUID := vshard.InstanceUUID("")
+	for _, r := range followers {
+		upstream := r.Upstream
+		if upstream == nil {
+			continue
+		}
+		if upstream.Lag < minLag {
+			minLag = upstream.Lag
 			minUUID = r.UUID
 		}
 	}
 
 	if minUUID == "" {
-		return "", ErrNoReplicaFound
+		return "", ErrNoCandidateFound
 	}
 
 	return minUUID, nil
