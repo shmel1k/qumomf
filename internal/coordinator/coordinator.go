@@ -2,7 +2,6 @@ package coordinator
 
 import (
 	"errors"
-	"time"
 
 	"github.com/shmel1k/qumomf/internal/config"
 	"github.com/shmel1k/qumomf/pkg/quorum"
@@ -19,7 +18,7 @@ type shutdownTask func()
 type Coordinator struct {
 	// clusters contains registered Tarantool clusters
 	// which Qumomf observes.
-	clusters map[string]vshard.Cluster
+	clusters map[string]*vshard.Cluster
 
 	// shutdownQueue contains all shutdown tasks to be
 	// executed when coordinator is going to exit.
@@ -28,11 +27,11 @@ type Coordinator struct {
 
 func New() *Coordinator {
 	return &Coordinator{
-		clusters: make(map[string]vshard.Cluster),
+		clusters: make(map[string]*vshard.Cluster),
 	}
 }
 
-func (c Coordinator) RegisterCluster(name string, cfg config.ClusterConfig) error {
+func (c Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, globalCfg *config.Config) error {
 	if _, exist := c.clusters[name]; exist {
 		return ErrClusterAlreadyExist
 	}
@@ -42,7 +41,8 @@ func (c Coordinator) RegisterCluster(name string, cfg config.ClusterConfig) erro
 	c.addShutdownTask(cluster.Shutdown)
 
 	mon := orchestrator.NewMonitor(orchestrator.Config{
-		InstancePollPeriod: time.Second, // TODO: move to global config
+		RecoveryPollTime:  globalCfg.Qumomf.ClusterRecoveryTime,
+		DiscoveryPollTime: globalCfg.Qumomf.ClusterDiscoveryTime,
 	}, cluster)
 	c.addShutdownTask(mon.Shutdown)
 

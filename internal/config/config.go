@@ -9,61 +9,67 @@ import (
 )
 
 const (
-	defaultUser           = "guest"
-	defaultPassword       = "guest"
-	defaultConnectTimeout = 5 * time.Second
-	defaultRequestTimeout = 5 * time.Second
+	defaultReadOnly             = true
+	defaultUser                 = "guest"
+	defaultPassword             = "guest"
+	defaultConnectTimeout       = 1 * time.Second
+	defaultRequestTimeout       = 1 * time.Second
+	defaultClusterDiscoveryTime = 5 * time.Second
+	defaultClusterRecoveryTime  = 1 * time.Second
 )
 
 type Config struct {
+	// Qumomf is a set of global options determines qumomf's behavior.
 	Qumomf struct {
-		Port string `yaml:"port"`
+		Port                 string        `yaml:"port"`
+		ReadOnly             bool          `yaml:"readonly"`
+		ClusterDiscoveryTime time.Duration `yaml:"cluster_discovery_time"`
+		ClusterRecoveryTime  time.Duration `yaml:"cluster_recovery_time"`
 	} `yaml:"qumomf"`
 
-	Tarantool struct {
-		ConnectTimeout time.Duration `yaml:"connect_timeout"`
-		RequestTimeout time.Duration `yaml:"request_timeout"`
+	// Connection contains the default connection options for each instance in clusters.
+	// This options might be overridden by cluster-level options.
+	Connection *ConnectConfig           `yaml:"connection,omitempty"`
+	Clusters   map[string]ClusterConfig `yaml:"clusters"`
+}
 
-		Topology struct {
-			ReadOnly bool   `yaml:"readonly,omitempty"`
-			User     string `yaml:"user"`
-			Password string `yaml:"password"`
-		} `yaml:"topology"`
-	} `yaml:"tarantool"`
-
-	Clusters map[string]ClusterConfig `yaml:"clusters"`
+type ConnectConfig struct {
+	User           *string        `yaml:"user"`
+	Password       *string        `yaml:"password"`
+	ConnectTimeout *time.Duration `yaml:"connect_timeout"`
+	RequestTimeout *time.Duration `yaml:"request_timeout"`
 }
 
 type ClusterConfig struct {
-	ReadOnly *bool                       `yaml:"readonly,omitempty"`
-	Shards   map[string][]InstanceConfig `yaml:"shards"`
-	Routers  []InstanceConfig            `yaml:"routers"`
+	// Connection contains connection options which qumomf should
+	// use to connect to routers and instances in the cluster.
+	Connection *ConnectConfig `yaml:"connection,omitempty"`
+
+	// ReadOnly indicates whether qumomf can run a failover
+	// or should just observe the cluster topology.
+	ReadOnly *bool `yaml:"readonly,omitempty"`
+
+	// OverrideURIRules contains list of URI used in tarantool replication and
+	// their mappings which will be used in connection pool by qumomf.
+	//
+	// Use it if qumomf should not connect to the instances by URI
+	// obtained from the replication configuration during the auto discovery.
+	OverrideURIRules map[string]string `yaml:"override_uri_rules,omitempty"`
+
+	// Routers contains list of all cluster routers.
+	//
+	// All cluster nodes must share a common topology.
+	// An administrator must ensure that the configurations are identical.
+	// The administrator must provide list of all routers so qumomf will be able
+	// to update their configuration when failover is running.
+	// Otherwise failover might break topology.
+	Routers []RouterConfig `yaml:"routers"`
 }
 
-type InstanceConfig struct {
-	Name           string         `yaml:"name"`
-	Addr           string         `yaml:"addr"`
-	UUID           string         `yaml:"uuid"`
-	User           *string        `yaml:"user,omitempty"`
-	Password       *string        `yaml:"password,omitempty"`
-	ConnectTimeout *time.Duration `yaml:"connect_timeout,omitempty"`
-	RequestTimeout *time.Duration `yaml:"request_timeout,omitempty"`
-	Master         bool           `yaml:"master"`
-}
-
-func (c *InstanceConfig) withDefaults() {
-	if c == nil {
-		return
-	}
-
-	if c.ConnectTimeout == nil {
-		v := defaultConnectTimeout
-		c.ConnectTimeout = &v
-	}
-	if c.RequestTimeout == nil {
-		v := defaultRequestTimeout
-		c.RequestTimeout = &v
-	}
+type RouterConfig struct {
+	Name string `yaml:"name"`
+	Addr string `yaml:"addr"`
+	UUID string `yaml:"uuid"`
 }
 
 func Setup(path string) (*Config, error) {
@@ -97,56 +103,55 @@ func (c *Config) withDefaults() {
 		return
 	}
 
-	topology := &c.Tarantool.Topology
-	topology.ReadOnly = true
-	topology.User = defaultUser
-	topology.Password = defaultPassword
+	base := &c.Qumomf
+	base.ReadOnly = defaultReadOnly
+	base.ClusterDiscoveryTime = defaultClusterDiscoveryTime
+	base.ClusterRecoveryTime = defaultClusterRecoveryTime
+
+	connection := &ConnectConfig{}
+	connection.User = newString(defaultUser)
+	connection.Password = newString(defaultPassword)
+	connection.ConnectTimeout = newDuration(defaultConnectTimeout)
+	connection.RequestTimeout = newDuration(defaultRequestTimeout)
+	c.Connection = connection
 }
 
 func (c *Config) overrideEmptyByGlobalConfigs() {
-	overrideFn := func(instCfg *InstanceConfig) {
-		globalCfg := c.Tarantool
-
-		if instCfg.ConnectTimeout == nil {
-			v := globalCfg.ConnectTimeout
-			instCfg.ConnectTimeout = &v
-		}
-		if instCfg.RequestTimeout == nil {
-			v := globalCfg.RequestTimeout
-			instCfg.RequestTimeout = &v
-		}
-		if instCfg.User == nil {
-			v := globalCfg.Topology.User
-			instCfg.User = &v
-		}
-		if instCfg.Password == nil {
-			v := globalCfg.Topology.Password
-			instCfg.Password = &v
-		}
-
-		// The last hope: set hardcoded predefined values.
-		instCfg.withDefaults()
-	}
-
 	for clusterUUID, clusterCfg := range c.Clusters {
 		if clusterCfg.ReadOnly == nil {
-			v := c.Tarantool.Topology.ReadOnly
-			clusterCfg.ReadOnly = &v
+			clusterCfg.ReadOnly = newBool(c.Qumomf.ReadOnly)
 		}
 
-		for shardUUID, shard := range clusterCfg.Shards {
-			for i := 0; i < len(shard); i++ {
-				shardCfg := &shard[i]
-				overrideFn(shardCfg)
+		if clusterCfg.Connection == nil {
+			clusterCfg.Connection = c.Connection
+		} else {
+			opts := clusterCfg.Connection
+			if opts.ConnectTimeout == nil {
+				opts.ConnectTimeout = c.Connection.ConnectTimeout
 			}
-			clusterCfg.Shards[shardUUID] = shard
-		}
-
-		for i := 0; i < len(clusterCfg.Routers); i++ {
-			routerCfg := &clusterCfg.Routers[i]
-			overrideFn(routerCfg)
+			if opts.RequestTimeout == nil {
+				opts.RequestTimeout = c.Connection.RequestTimeout
+			}
+			if opts.User == nil {
+				opts.User = c.Connection.User
+			}
+			if opts.Password == nil {
+				opts.Password = c.Connection.Password
+			}
 		}
 
 		c.Clusters[clusterUUID] = clusterCfg
 	}
+}
+
+func newBool(v bool) *bool {
+	return &v
+}
+
+func newDuration(v time.Duration) *time.Duration {
+	return &v
+}
+
+func newString(v string) *string {
+	return &v
 }

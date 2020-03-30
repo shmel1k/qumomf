@@ -3,5 +3,6 @@ package orchestrator
 import "time"
 
 type Config struct {
-	InstancePollPeriod time.Duration
+	RecoveryPollTime  time.Duration
+	DiscoveryPollTime time.Duration
 }

@@ -4,14 +4,28 @@ import (
 	"github.com/shmel1k/qumomf/pkg/vshard"
 )
 
-type AnalysisWriteStream chan<- ReplicaSetAnalysis
-type AnalysisReadStream <-chan ReplicaSetAnalysis
+type AnalysisWriteStream chan<- *ReplicationAnalysis
+type AnalysisReadStream <-chan *ReplicationAnalysis
 
-func NewAnalysisStream() chan ReplicaSetAnalysis {
-	return make(chan ReplicaSetAnalysis)
+func NewAnalysisStream() chan *ReplicationAnalysis {
+	return make(chan *ReplicationAnalysis)
 }
 
-type ReplicaSetAnalysis struct {
-	Set  vshard.ReplicaSet
-	Info vshard.ReplicaSetInfo
+type ReplicaSetState string
+
+const (
+	NoProblem                        ReplicaSetState = "NoProblem"
+	DeadMaster                       ReplicaSetState = "DeadMaster"
+	DeadMasterAndFollowers           ReplicaSetState = "DeadMasterAndFollowers"
+	DeadMasterAndSomeFollowers       ReplicaSetState = "DeadMasterAndSomeFollowers"
+	DeadMasterWithoutFollowers       ReplicaSetState = "DeadMasterWithoutFollowers"
+	AllMasterFollowersNotReplicating ReplicaSetState = "AllMasterFollowersNotReplicating"
+)
+
+type ReplicationAnalysis struct {
+	Set                      vshard.ReplicaSet
+	CountReplicas            int
+	CountWorkingReplicas     int
+	CountReplicatingReplicas int
+	State                    ReplicaSetState
 }
