@@ -6,29 +6,9 @@ local IDX_VALUE = 2
 
 local cfg = {
     memtx_memory = 100 * 1024 * 1024,
-    bucket_count = 10000,
+    bucket_count = 100,
     rebalancer_disbalance_threshold = 10,
-    rebalancer_max_receiving = 100,
-
-    -- The maximum number of checkpoints that the daemon maintains
-    checkpoint_count = 6;
-
-    -- Don't abort recovery if there is an error while reading
-    -- files from the disk at server start.
-    force_recovery = true;
-
-    -- The interval between actions by the checkpoint daemon, in seconds
-    checkpoint_interval = 60 * 60; -- one hour
-
-    -- The maximal size of a single write-ahead log file
-    wal_max_size = 256 * 1024 * 1024;
-
-    wal_mode = "write";
-
-    memtx_min_tuple_size = 16;
-    memtx_max_tuple_size = 128 * 1024 * 1024; -- 128Mb
-
-    readahead = 16320;
+    rebalancer_max_receiving = 1000,
 
     sharding = {
         ['7432f072-c00b-4498-b1a6-6d9547a8a150'] = { -- replicaset #1
@@ -66,6 +46,14 @@ cfg.listen = 3301
 vshard.storage.cfg(cfg, UUID)
 
 box.once("init", function()
+    if UUID == '294e7310-13f0-4690-b136-169599e87ba0' then
+        vshard.storage.bucket_force_create(0, 50, {})
+    end
+
+    if UUID == 'f3ef657e-eb9a-4730-b420-7ea78d52797d' then
+        vshard.storage.bucket_force_create(51, 50, {})
+    end
+
     box.schema.user.create('qumomf', { password = 'qumomf', if_not_exists = true })
     box.schema.user.grant('qumomf', 'read,write,create,execute', 'universe')
 
