@@ -2,29 +2,9 @@ vshard = require('vshard')
 
 local cfg = {
     memtx_memory = 100 * 1024 * 1024,
-    bucket_count = 10000,
+    bucket_count = 100,
     rebalancer_disbalance_threshold = 10,
-    rebalancer_max_receiving = 100,
-
-    -- The maximum number of checkpoints that the daemon maintains
-    checkpoint_count = 6;
-
-    -- Don't abort recovery if there is an error while reading
-    -- files from the disk at server start.
-    force_recovery = true;
-
-    -- The interval between actions by the checkpoint daemon, in seconds
-    checkpoint_interval = 60 * 60; -- one hour
-
-    -- The maximal size of a single write-ahead log file
-    wal_max_size = 256 * 1024 * 1024;
-
-    wal_mode = "write";
-
-    memtx_min_tuple_size = 16;
-    memtx_max_tuple_size = 128 * 1024 * 1024; -- 128Mb
-
-    readahead = 16320;
+    rebalancer_max_receiving = 1000,
 
     sharding = {
         ['7432f072-c00b-4498-b1a6-6d9547a8a150'] = { -- replicaset #1
@@ -60,12 +40,12 @@ cfg.listen = 3301
 vshard.router.cfg(cfg)
 
 box.once("init", function()
-    box.schema.user.create('qumomf', {password='qumomf', if_not_exists=true})
+    box.schema.user.create('qumomf', { password = 'qumomf', if_not_exists = true })
     box.schema.user.grant('qumomf', 'read,write,create,execute', 'universe')
 end)
 
 vshard.router.bootstrap()
-
+vshard.router.discovery_wakeup()
 
 function qumomf_change_master(shard_uuid, old_master_uuid, new_master_uuid)
     local replicas = cfg.sharding[shard_uuid].replicas

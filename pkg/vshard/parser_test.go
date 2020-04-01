@@ -37,7 +37,7 @@ func TestParseRouterInfo(t *testing.T) {
 
 	b := RouterBucket{
 		AvailableRO: 0,
-		AvailableRW: 10000,
+		AvailableRW: 100,
 		Unknown:     0,
 		Unreachable: 0,
 	}
@@ -86,7 +86,7 @@ func TestParseReplication(t *testing.T) {
 	master := data[0]
 	assert.Equal(t, InstanceUUID("294e7310-13f0-4690-b136-169599e87ba0"), master.UUID)
 	assert.Equal(t, "", master.URI) // No upstream data for master, URI must be set manually
-	assert.Equal(t, int64(5045), master.LSN)
+	assert.Equal(t, int64(95), master.LSN)
 
 	replica := data[1]
 	assert.Equal(t, InstanceUUID("cd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1"), replica.UUID)
@@ -121,12 +121,12 @@ func TestParseStorageInfo(t *testing.T) {
 	assert.Empty(t, data.Alerts)
 
 	b := InstanceBucket{
-		Active:    5000,
+		Active:    50,
 		Garbage:   0,
 		Pinned:    0,
 		Receiving: 0,
 		Sending:   0,
-		Total:     5000,
+		Total:     50,
 	}
 	assert.Equal(t, b, data.Bucket)
 }
