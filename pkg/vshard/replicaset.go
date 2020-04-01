@@ -33,7 +33,7 @@ func (set *ReplicaSet) Followers() []Instance {
 	for _, inst := range set.Instances { //nolint:gocritic
 		// Storage info contains the replica status in its set.
 		// If we could not get that info, fall back to the replication data from the master.
-		if inst.StorageInfo.ReplicationStatus == StatusFollow {
+		if inst.StorageInfo.Replication.Status == StatusFollow {
 			followers = append(followers, inst)
 		} else if inst.Upstream != nil && inst.Upstream.Status == UpstreamFollow {
 			followers = append(followers, inst)

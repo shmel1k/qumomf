@@ -96,8 +96,8 @@ func TestParseReplication(t *testing.T) {
 	assert.Equal(t, UpstreamFollow, replica.Upstream.Status)
 }
 
-func TestParseStorageInfo(t *testing.T) {
-	conn := setupConnection("127.0.0.1:9303", ConnOptions{
+func TestParseInstanceInfo(t *testing.T) {
+	conn := setupConnection("127.0.0.1:9304", ConnOptions{
 		User:           "qumomf",
 		Password:       "qumomf",
 		UUID:           "294e7310-13f0-4690-b136-169599e87ba0",
@@ -117,7 +117,10 @@ func TestParseStorageInfo(t *testing.T) {
 	data, err := ParseStorageInfo(resp.Data)
 	require.Nil(t, err)
 
-	assert.Equal(t, StatusMaster, data.ReplicationStatus)
+	replication := &data.Replication
+	assert.Equal(t, StatusFollow, replication.Status)
+	assert.InDelta(t, float64(0), replication.Delay, float64(1))
+
 	assert.Empty(t, data.Alerts)
 
 	b := InstanceBucket{

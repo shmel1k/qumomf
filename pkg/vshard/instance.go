@@ -5,8 +5,9 @@ type ReplicationStatus string
 type UpstreamStatus string
 
 const (
-	StatusFollow ReplicationStatus = "follow"
-	StatusMaster ReplicationStatus = "master"
+	StatusFollow       ReplicationStatus = "follow"
+	StatusMaster       ReplicationStatus = "master"
+	StatusDisconnected ReplicationStatus = "disconnected"
 )
 
 const (
@@ -24,7 +25,7 @@ type Instance struct {
 	// UUID is a global unique identifier of the instance.
 	UUID InstanceUUID `json:"uuid"`
 
-	// URI contains the replication user name, host IP address and port number used for the instance.
+	// URI contains the replication user name, host IP address and port number of the instance.
 	URI string `json:"uri"`
 
 	// LastCheckValid indicates whether the last check of the instance by qumomf was successful or not.
@@ -71,9 +72,17 @@ func (i *Instance) HasAlert(t AlertType) bool {
 }
 
 type StorageInfo struct {
-	Bucket            InstanceBucket    `json:"bucket"`
-	ReplicationStatus ReplicationStatus `json:"replication_status"`
-	Alerts            []Alert           `json:"alerts"`
+	Replication Replication    `json:"replication"`
+	Bucket      InstanceBucket `json:"bucket"`
+	Alerts      []Alert        `json:"alerts"`
+}
+
+type Replication struct {
+	Status ReplicationStatus `json:"status"`
+
+	// Delay might be the lag or idle depends on the replication status.
+	// Tarantool returns idle when replication is broken otherwise the lag.
+	Delay float64 `json:"delay"`
 }
 
 type InstanceBucket struct {

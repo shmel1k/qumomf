@@ -20,27 +20,27 @@ func TestLagQuorum(t *testing.T) {
 					{
 						UUID: "1",
 						StorageInfo: vshard.StorageInfo{
-							ReplicationStatus: vshard.StatusMaster,
+							Replication: vshard.Replication{
+								Status: vshard.StatusMaster,
+							},
 						},
 					},
 					{
 						UUID: "2",
-						Upstream: &vshard.Upstream{
-							Status: vshard.UpstreamFollow,
-							Lag:    0.05,
-						},
 						StorageInfo: vshard.StorageInfo{
-							ReplicationStatus: vshard.StatusFollow,
+							Replication: vshard.Replication{
+								Status: vshard.StatusFollow,
+								Delay:  0.05,
+							},
 						},
 					},
 					{
 						UUID: "3",
-						Upstream: &vshard.Upstream{
-							Status: vshard.UpstreamFollow,
-							Lag:    0.1,
-						},
 						StorageInfo: vshard.StorageInfo{
-							ReplicationStatus: vshard.StatusFollow,
+							Replication: vshard.Replication{
+								Status: vshard.StatusFollow,
+								Delay:  0.1,
+							},
 						},
 					},
 				},
@@ -54,7 +54,9 @@ func TestLagQuorum(t *testing.T) {
 					{
 						UUID: "1",
 						StorageInfo: vshard.StorageInfo{
-							ReplicationStatus: vshard.StatusMaster,
+							Replication: vshard.Replication{
+								Status: vshard.StatusMaster,
+							},
 						},
 					},
 				},

@@ -84,7 +84,7 @@ func (m *storageMonitor) analyze(set vshard.ReplicaSet) *ReplicationAnalysis {
 		if r.LastCheckValid {
 			countWorkingReplicas++
 
-			if !r.HasAlert(vshard.AlertUnreachableMaster) {
+			if r.StorageInfo.Replication.Status == vshard.StatusFollow {
 				countReplicatingReplicas++
 			}
 		}
@@ -100,13 +100,13 @@ func (m *storageMonitor) analyze(set vshard.ReplicaSet) *ReplicationAnalysis {
 	isMasterDead := !master.LastCheckValid
 
 	state := NoProblem
-	if isMasterDead && countWorkingReplicas == countReplicas && countReplicatingReplicas == countReplicas {
+	if isMasterDead && countWorkingReplicas == countReplicas && countReplicatingReplicas == 0 {
 		if countReplicas == 0 {
 			state = DeadMasterWithoutFollowers
 		} else {
 			state = DeadMaster
 		}
-	} else if isMasterDead && countWorkingReplicas <= countReplicas && countReplicatingReplicas < countReplicas {
+	} else if isMasterDead && countWorkingReplicas <= countReplicas && countReplicatingReplicas == 0 {
 		if countWorkingReplicas == 0 {
 			state = DeadMasterAndFollowers
 		} else {

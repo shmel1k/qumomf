@@ -1,6 +1,8 @@
 package orchestrator
 
 import (
+	"fmt"
+
 	"github.com/shmel1k/qumomf/pkg/vshard"
 )
 
@@ -28,4 +30,11 @@ type ReplicationAnalysis struct {
 	CountWorkingReplicas     int
 	CountReplicatingReplicas int
 	State                    ReplicaSetState
+}
+
+func (a ReplicationAnalysis) String() string {
+	return fmt.Sprintf(
+		"ReplicaSet '%s' analysis: [State: %s; CountReplicas: %d; CountWorkingReplicas: %d; CountReplicatingReplicas: %d]",
+		a.Set.UUID, a.State, a.CountReplicas, a.CountWorkingReplicas, a.CountReplicatingReplicas,
+	)
 }

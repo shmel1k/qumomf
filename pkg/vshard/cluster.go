@@ -327,7 +327,6 @@ func (c *Cluster) discoverInstances(ctx context.Context, instances []Instance) {
 }
 
 func (c *Cluster) discoverInstance(ctx context.Context, inst *Instance) {
-	// TODO: it seems better to update upstream info rather than storage info.
 	conn := c.Pool.Get(inst.URI, string(inst.UUID))
 	resp := conn.Exec(ctx, vshardStorageInfoQuery)
 	if resp.Error != nil {
@@ -338,7 +337,7 @@ func (c *Cluster) discoverInstance(ctx context.Context, inst *Instance) {
 
 	storageInfo, err := ParseStorageInfo(resp.Data)
 	if err != nil {
-		log.Err(resp.Error).Msgf("failed to read the storage info of the instance '%s'", inst.UUID)
+		log.Err(err).Msgf("failed to read the storage info of the instance '%s'", inst.UUID)
 		inst.LastCheckValid = false
 		return
 	}

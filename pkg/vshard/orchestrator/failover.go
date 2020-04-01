@@ -67,18 +67,27 @@ func (f *swapMasterFailover) shouldBeAnalysisChecked() bool {
 }
 
 func (f *swapMasterFailover) checkAndRecover(ctx context.Context, analysis *ReplicationAnalysis) {
+	// TODO: add anti-flapping mechanism
+
+	log.Debug().Msgf("checkAndRecover: %s", *analysis)
 	set := analysis.Set
 
 	switch analysis.State {
+	case NoProblem:
+		// Nothing to do, everything is OK.
 	case DeadMaster:
 		f.cluster.StartRecovery()
 		log.Info().Msgf("Master cannot be reached by qumomf. Will run failover. ReplicaSet snapshot: %s", set)
 		f.promoteFollowerToMaster(ctx, set)
+		log.Info().Msgf("Will run a force discovery after the failover on ReplicaSet '%s'", set.UUID)
+		f.cluster.Discover()
 		f.cluster.StopRecovery()
 	case DeadMasterAndSomeFollowers:
 		f.cluster.StartRecovery()
 		log.Info().Msgf("Master cannot be reached by qumomf and some of its followers are unreachable. Will run failover. ReplicaSet snapshot: %s", set)
 		f.promoteFollowerToMaster(ctx, set)
+		log.Info().Msgf("Will run a force discovery after the failover on ReplicaSet '%s'", set.UUID)
+		f.cluster.Discover()
 		f.cluster.StopRecovery()
 	case DeadMasterAndFollowers:
 		log.Info().Msgf("Master cannot be reached by qumomf and none of its followers is replicating. No actions will be applied. ReplicaSet snapshot: %s", set)
@@ -86,8 +95,6 @@ func (f *swapMasterFailover) checkAndRecover(ctx context.Context, analysis *Repl
 		log.Info().Msgf("Master is reachable but none of its replicas is replicating. No actions will be applied. ReplicaSet snapshot: %s", set)
 	case DeadMasterWithoutFollowers:
 		log.Info().Msgf("Master cannot be reached by qumomf and has no followers. No actions will be applied. ReplicaSet snapshot: %s", set)
-	case NoProblem:
-		// Nothing to do, everything is OK.
 	}
 }
 
