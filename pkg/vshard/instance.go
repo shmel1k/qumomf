@@ -25,7 +25,7 @@ type Instance struct {
 	UUID InstanceUUID `json:"uuid"`
 
 	// URI contains the replication user name, host IP address and port number used for the instance.
-	URI string
+	URI string `json:"uri"`
 
 	// LastCheckValid indicates whether the last check of the instance by qumomf was successful or not.
 	LastCheckValid bool `json:"last_check_valid"`

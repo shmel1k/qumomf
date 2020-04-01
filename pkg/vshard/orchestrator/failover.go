@@ -109,7 +109,8 @@ func (f *swapMasterFailover) promoteFollowerToMaster(ctx context.Context, badSet
 
 	// Update configuration on replica sets.
 	for _, set := range f.cluster.ReplicaSets() {
-		for _, inst := range set.Instances {
+		for i := range set.Instances {
+			inst := &set.Instances[i]
 			conn := f.cluster.Pool.Get(inst.URI, string(inst.UUID))
 			resp := conn.Exec(ctx, q)
 			if resp.Error == nil {
