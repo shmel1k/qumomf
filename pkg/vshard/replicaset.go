@@ -30,7 +30,7 @@ func (set *ReplicaSet) Followers() []Instance {
 	}
 
 	followers := make([]Instance, 0, len(set.Instances)-1)
-	for _, inst := range set.Instances {
+	for _, inst := range set.Instances { //nolint:gocritic
 		// Storage info contains the replica status in its set.
 		// If we could not get that info, fall back to the replication data from the master.
 		if inst.StorageInfo.ReplicationStatus == StatusFollow {
@@ -44,7 +44,7 @@ func (set *ReplicaSet) Followers() []Instance {
 }
 
 func (set *ReplicaSet) Master() (Instance, error) {
-	for _, inst := range set.Instances {
+	for _, inst := range set.Instances { //nolint:gocritic
 		if inst.UUID == set.MasterUUID {
 			return inst, nil
 		}

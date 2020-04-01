@@ -77,7 +77,9 @@ func (m *storageMonitor) analyze(set vshard.ReplicaSet) *ReplicationAnalysis {
 	countReplicas := 0
 	countWorkingReplicas := 0
 	countReplicatingReplicas := 0
-	for _, r := range set.Followers() {
+	followers := set.Followers()
+	for i := range followers {
+		r := &followers[i]
 		countReplicas++
 		if r.LastCheckValid {
 			countWorkingReplicas++
