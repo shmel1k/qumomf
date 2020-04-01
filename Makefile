@@ -11,6 +11,7 @@ run: build
 .PHONY: run_docker
 run_docker:
 	docker-compose -f example/docker-compose.yml up -d
+	sleep 1
 
 .PHONY: down_docker
 down_docker:
@@ -24,12 +25,19 @@ fmt:
 lint:
 	golangci-lint run -v ./...
 
-.PHONY: test
-test:
+.PHONY: run_unit_tests
+run_unit_tests:
 	go test -count=1 ./...
 
-.PHONY: integration_test
-integration_test:
-	cd example && go test -run Test_Router_AddAndCheckKey -count=1 -v -tags=integration ./...
+.PHONY: run_integration_tests
+run_integration_tests:
+	go test -count=1 -v -tags=integration ./...
+
+.PHONY: run_tests
+run_tests: run_docker run_integration_tests
+
+.PHONY: run_failover_test
+run_failover_test:
+	cd example && go test -run Test_Router_AddAndCheckKey -count=1 -v -tags=failover ./...
 	docker-compose -f example/docker-compose.yml stop storage_1_m storage_2_m
-	cd example && go test -run Test_Router_AddAndCheckKey -count=1 -v -tags=integration ./...
+	cd example && go test -run Test_Router_AddAndCheckKey -count=1 -v -tags=failover ./...

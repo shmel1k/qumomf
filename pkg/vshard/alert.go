@@ -8,6 +8,6 @@ const (
 )
 
 type Alert struct {
-	Type        AlertType
-	Description string
+	Type        AlertType `json:"type"`
+	Description string    `json:"description"`
 }

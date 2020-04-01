@@ -132,7 +132,7 @@ func parseRouterReplicaSets(dt container) (RouterReplicaSetParameters, error) {
 }
 
 func parseRouterInstance(dt container) (RouterInstanceParameters, error) {
-	mp, err := dt.getContainer("replica")
+	mp, err := dt.getContainer("master")
 	if err != nil {
 		return RouterInstanceParameters{}, err
 	}
@@ -223,6 +223,19 @@ func ParseStorageInfo(data [][]interface{}) (StorageInfo, error) {
 	if err != nil {
 		return StorageInfo{}, err
 	}
+	delay := float64(0)
+	if _, ok := replication["lag"]; ok {
+		delay, err = replication.getFloat64("lag")
+		if err != nil {
+			return StorageInfo{}, err
+		}
+	}
+	if _, ok := replication["idle"]; ok {
+		delay, err = replication.getFloat64("idle")
+		if err != nil {
+			return StorageInfo{}, err
+		}
+	}
 	status, err := replication.getString("status")
 	if err != nil {
 		return StorageInfo{}, err
@@ -234,9 +247,12 @@ func ParseStorageInfo(data [][]interface{}) (StorageInfo, error) {
 	}
 
 	return StorageInfo{
-		Bucket:            bucket,
-		ReplicationStatus: ReplicationStatus(status),
-		Alerts:            alerts,
+		Replication: Replication{
+			Status: ReplicationStatus(status),
+			Delay:  delay,
+		},
+		Bucket: bucket,
+		Alerts: alerts,
 	}, nil
 }
 

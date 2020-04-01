@@ -37,12 +37,10 @@ func (*lagQuorum) ChooseMaster(set vshard.ReplicaSet) (vshard.InstanceUUID, erro
 	minUUID := vshard.InstanceUUID("")
 	for i := range followers {
 		r := &followers[i]
-		upstream := r.Upstream
-		if upstream == nil {
-			continue
-		}
-		if upstream.Lag < minLag {
-			minLag = upstream.Lag
+		repl := &r.StorageInfo.Replication
+
+		if repl.Delay < minLag {
+			minLag = repl.Delay
 			minUUID = r.UUID
 		}
 	}
