@@ -4,7 +4,6 @@ services:
   router_1:
     build: './router'
     container_name: qumomf_router.ddk
-    command: ["wait-for-it", "storage_1_m:3301", "storage_2_m:3301", "--", "tarantool", "/etc/tarantool/instances.enabled/init_router.lua"]
     networks:
       - qumomf
     ports:

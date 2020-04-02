@@ -8,13 +8,14 @@ build:
 run: build
 	bin/qumomf -config=example/qumomf.yaml
 
-.PHONY: run_docker
-run_docker:
+.PHONY: env_up
+env_up:
 	docker-compose -f example/docker-compose.yml up -d
 	sleep 1
+	docker-compose -f example/docker-compose.yml ps
 
-.PHONY: down_docker
-down_docker:
+.PHONY: env_down
+env_down:
 	docker-compose -f example/docker-compose.yml down -v --rmi local --remove-orphans
 
 .PHONY: fmt
@@ -27,14 +28,14 @@ lint:
 
 .PHONY: run_unit_tests
 run_unit_tests:
-	go test -count=1 ./...
+	go test -count=1 -v ./...
 
 .PHONY: run_integration_tests
 run_integration_tests:
 	go test -count=1 -v -tags=integration ./...
 
 .PHONY: run_tests
-run_tests: run_docker run_integration_tests
+run_tests: env_up run_integration_tests
 
 .PHONY: run_failover_test
 run_failover_test:
