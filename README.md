@@ -5,10 +5,8 @@ Tarantool vshard orchestrator
 ## Test
 
 ```bash
-# Integration tests
-
-make run_docker
-make run
-make integration_test
-make down_docker
+# Unit & Integration tests
+make env_up
+make run_tests
+make env_down
 ```
