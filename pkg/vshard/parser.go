@@ -34,11 +34,16 @@ func (c container) getInt64(key string) (int64, error) {
 }
 
 func (c container) getFloat64(key string) (float64, error) {
-	v, ok := c[key].(float64)
-	if !ok {
+	switch t := c[key].(type) {
+	case float64:
+		return t, nil
+	case uint64:
+		return float64(t), nil
+	case int64:
+		return float64(t), nil
+	default:
 		return 0, fmt.Errorf("field '%s' (%T) is not found or has unexpected type in container: %v", key, c[key], c)
 	}
-	return v, nil
 }
 
 func (c container) getArray(key string) ([]interface{}, error) {
