@@ -1,6 +1,4 @@
 run:
-  build-tags:
-    - integration
   skip-dirs:
     - example
 

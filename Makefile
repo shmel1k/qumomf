@@ -26,16 +26,13 @@ fmt:
 lint:
 	golangci-lint run -v ./...
 
-.PHONY: run_unit_tests
-run_unit_tests:
-	go test -count=1 -v ./...
-
-.PHONY: run_integration_tests
-run_integration_tests:
-	go test -count=1 -v -tags=integration ./...
+.PHONY: run_short_tests
+run_short_tests:
+	go test -count=1 -v -short ./...
 
 .PHONY: run_tests
-run_tests: env_up run_integration_tests
+run_tests: env_up
+	go test -count=1 -v -race ./...
 
 .PHONY: run_failover_test
 run_failover_test:

@@ -1,5 +1,3 @@
-// +build integration
-
 package vshard
 
 import (
@@ -12,6 +10,10 @@ import (
 )
 
 func TestParseRouterInfo(t *testing.T) {
+	if testing.Short() {
+		t.Skip("test requires dev env - skipping it in short mode.")
+	}
+
 	conn := setupConnection("127.0.0.1:9301", ConnOptions{
 		User:           "qumomf",
 		Password:       "qumomf",
@@ -61,6 +63,10 @@ func TestParseRouterInfo(t *testing.T) {
 }
 
 func TestParseReplication(t *testing.T) {
+	if testing.Short() {
+		t.Skip("test requires dev env - skipping it in short mode.")
+	}
+
 	conn := setupConnection("127.0.0.1:9303", ConnOptions{
 		User:           "qumomf",
 		Password:       "qumomf",
@@ -97,6 +103,10 @@ func TestParseReplication(t *testing.T) {
 }
 
 func TestParseInstanceInfo(t *testing.T) {
+	if testing.Short() {
+		t.Skip("test requires dev env - skipping it in short mode.")
+	}
+
 	conn := setupConnection("127.0.0.1:9304", ConnOptions{
 		User:           "qumomf",
 		Password:       "qumomf",

@@ -36,7 +36,6 @@ jobs:
       - name: Test
         run: |
           make env_up
-          docker-compose -f example/docker-compose.yml logs router_1
           make run_tests
           make env_down
 
