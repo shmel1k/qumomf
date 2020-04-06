@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	ErrNoFollowers      = errors.New("quorum: ReplicaSet does not have any followers")
+	ErrNoAliveFollowers = errors.New("quorum: ReplicaSet does not have any alive followers")
 	ErrNoCandidateFound = errors.New("quorum: no available candidate found")
 )
 
@@ -28,9 +28,9 @@ func NewLagQuorum() Quorum {
 }
 
 func (*lagQuorum) ChooseMaster(set vshard.ReplicaSet) (vshard.InstanceUUID, error) {
-	followers := set.Followers()
+	followers := set.AliveFollowers()
 	if len(followers) == 0 {
-		return "", ErrNoFollowers
+		return "", ErrNoAliveFollowers
 	}
 
 	minLag := maxLag

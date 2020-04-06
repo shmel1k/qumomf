@@ -95,6 +95,8 @@ func (f *swapMasterFailover) checkAndRecover(ctx context.Context, analysis *Repl
 		log.Info().Msgf("Master is reachable but none of its replicas is replicating. No actions will be applied. ReplicaSet snapshot: %s", set)
 	case DeadMasterWithoutFollowers:
 		log.Info().Msgf("Master cannot be reached by qumomf and has no followers. No actions will be applied. ReplicaSet snapshot: %s", set)
+	case NetworkProblems:
+		log.Info().Msgf("Master cannot be reached by qumomf but some followers are still replicating. It might be a network problem, no actions will be applied. ReplicaSet snapshot: %s", set)
 	}
 }
 
