@@ -71,9 +71,8 @@ func (m *storageMonitor) continuousDiscovery(stream AnalysisWriteStream) {
 	}
 }
 
+//nolint: gocyclo
 func (m *storageMonitor) analyze(set vshard.ReplicaSet) *ReplicationAnalysis {
-	// TODO: make it smarter - https://github.com/shmel1k/qumomf/issues/3
-
 	countReplicas := 0
 	countWorkingReplicas := 0
 	countReplicatingReplicas := 0
@@ -112,7 +111,9 @@ func (m *storageMonitor) analyze(set vshard.ReplicaSet) *ReplicationAnalysis {
 		} else {
 			state = DeadMasterAndSomeFollowers
 		}
-	} else if countReplicas > 0 && countReplicatingReplicas == 0 {
+	} else if isMasterDead && countReplicatingReplicas != 0 {
+		state = NetworkProblems
+	} else if !isMasterDead && countReplicas > 0 && countReplicatingReplicas == 0 {
 		state = AllMasterFollowersNotReplicating
 	}
 

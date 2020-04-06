@@ -3,6 +3,7 @@ package vshard
 type InstanceUUID string
 type ReplicationStatus string
 type UpstreamStatus string
+type DownstreamStatus string
 
 const (
 	StatusFollow       ReplicationStatus = "follow"
@@ -21,6 +22,11 @@ const (
 	UpstreamSync         UpstreamStatus = "sync"         // the master and replica are synchronizing to have the same data.
 )
 
+const (
+	DownstreamFollow  DownstreamStatus = "follow"  // the downstream replication is in progress.
+	DownstreamStopped DownstreamStatus = "stopped" // the downstream replication has stopped.
+)
+
 type Instance struct {
 	// UUID is a global unique identifier of the instance.
 	UUID InstanceUUID `json:"uuid"`
@@ -37,6 +43,9 @@ type Instance struct {
 	// Upstream contains statistics for the replication data uploaded by the instance.
 	Upstream *Upstream `json:"upstream"`
 
+	// Downstream contains statistics for the replication data requested and downloaded from the instance.
+	Downstream *Downstream `json:"downstream"`
+
 	// StorageInfo contains the information about the storage instance.
 	StorageInfo StorageInfo `json:"storage_info"`
 }
@@ -46,7 +55,7 @@ type Upstream struct {
 	// Peer contains the replication user name, host IP address and port number used for the instance.
 	Peer string
 
-	//  Status is the replication status of the instance.
+	// Status is the replication status of the instance.
 	Status UpstreamStatus `json:"status"`
 
 	// Idle is the time (in seconds) since the instance received the last event from a master.
@@ -59,6 +68,11 @@ type Upstream struct {
 
 	// Message contains an error message in case of a degraded state, empty otherwise.
 	Message string `json:"message"`
+}
+
+type Downstream struct {
+	// Status is the replication status for downstream replications.
+	Status DownstreamStatus `json:"status"`
 }
 
 func (i *Instance) HasAlert(t AlertType) bool {

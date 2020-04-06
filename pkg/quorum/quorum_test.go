@@ -27,6 +27,12 @@ func TestLagQuorum(t *testing.T) {
 					},
 					{
 						UUID: "2",
+						Upstream: &vshard.Upstream{
+							Status: vshard.UpstreamFollow,
+						},
+						Downstream: &vshard.Downstream{
+							Status: vshard.DownstreamFollow,
+						},
 						StorageInfo: vshard.StorageInfo{
 							Replication: vshard.Replication{
 								Status: vshard.StatusFollow,
@@ -36,6 +42,12 @@ func TestLagQuorum(t *testing.T) {
 					},
 					{
 						UUID: "3",
+						Upstream: &vshard.Upstream{
+							Status: vshard.UpstreamFollow,
+						},
+						Downstream: &vshard.Downstream{
+							Status: vshard.DownstreamFollow,
+						},
 						StorageInfo: vshard.StorageInfo{
 							Replication: vshard.Replication{
 								Status: vshard.StatusFollow,
@@ -48,7 +60,7 @@ func TestLagQuorum(t *testing.T) {
 			expectedUUID: "2",
 		},
 		{
-			testName: "NoFollowers_ShouldReturnErr",
+			testName: "NoAliveFollowers_ShouldReturnErr",
 			set: vshard.ReplicaSet{
 				Instances: []vshard.Instance{
 					{
@@ -59,16 +71,22 @@ func TestLagQuorum(t *testing.T) {
 							},
 						},
 					},
+					{
+						UUID: "2",
+						Upstream: &vshard.Upstream{
+							Status: vshard.UpstreamDisconnected,
+						},
+					},
 				},
 			},
-			expectedErr: ErrNoFollowers,
+			expectedErr: ErrNoAliveFollowers,
 		},
 		{
 			testName: "EmptySet_ShouldReturnErr",
 			set: vshard.ReplicaSet{
 				Instances: nil,
 			},
-			expectedErr: ErrNoFollowers,
+			expectedErr: ErrNoAliveFollowers,
 		},
 	}
 

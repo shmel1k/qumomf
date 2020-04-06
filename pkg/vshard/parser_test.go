@@ -93,6 +93,8 @@ func TestParseReplication(t *testing.T) {
 	assert.Equal(t, InstanceUUID("294e7310-13f0-4690-b136-169599e87ba0"), master.UUID)
 	assert.Equal(t, "", master.URI) // No upstream data for master, URI must be set manually
 	assert.Equal(t, int64(95), master.LSN)
+	assert.Nil(t, master.Upstream)
+	assert.Nil(t, master.Downstream)
 
 	replica := data[1]
 	assert.Equal(t, InstanceUUID("cd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1"), replica.UUID)
@@ -100,6 +102,8 @@ func TestParseReplication(t *testing.T) {
 	assert.Equal(t, int64(0), replica.LSN)
 	require.NotNil(t, replica.Upstream)
 	assert.Equal(t, UpstreamFollow, replica.Upstream.Status)
+	require.NotNil(t, replica.Downstream)
+	assert.Equal(t, DownstreamFollow, replica.Downstream.Status)
 }
 
 func TestParseInstanceInfo(t *testing.T) {

@@ -375,16 +375,22 @@ func ParseReplication(data [][]interface{}) ([]Instance, error) {
 			return nil, err
 		}
 
+		downstream, err := parseDownstream(mp)
+		if err != nil {
+			return nil, err
+		}
+
 		uri := ""
 		if upstream != nil {
 			uri = upstream.Peer
 		}
 
 		inst := Instance{
-			UUID:     InstanceUUID(uuid),
-			URI:      uri,
-			LSN:      lsn,
-			Upstream: upstream,
+			UUID:       InstanceUUID(uuid),
+			URI:        uri,
+			LSN:        lsn,
+			Upstream:   upstream,
+			Downstream: downstream,
 		}
 
 		instances = append(instances, inst)
@@ -438,5 +444,26 @@ func parseUpstream(dt container) (*Upstream, error) {
 		Idle:    idle,
 		Lag:     lag,
 		Message: message,
+	}, nil
+}
+
+func parseDownstream(dt container) (*Downstream, error) {
+	_, ok := dt["upstream"]
+	if !ok {
+		return nil, nil
+	}
+
+	u, err := dt.getContainer("upstream")
+	if err != nil {
+		return nil, err
+	}
+
+	status, err := u.getString("status")
+	if err != nil {
+		return nil, err
+	}
+
+	return &Downstream{
+		Status: DownstreamStatus(status),
 	}, nil
 }

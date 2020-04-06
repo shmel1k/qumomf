@@ -31,12 +31,40 @@ func (set *ReplicaSet) Followers() []Instance {
 
 	followers := make([]Instance, 0, len(set.Instances)-1)
 	for _, inst := range set.Instances { //nolint:gocritic
-		// Storage info contains the replica status in its set.
-		// If we could not get that info, fall back to the replication data from the master.
-		if inst.StorageInfo.Replication.Status == StatusFollow {
+		if inst.UUID != set.MasterUUID {
 			followers = append(followers, inst)
-		} else if inst.Upstream != nil && inst.Upstream.Status == UpstreamFollow {
-			followers = append(followers, inst)
+		}
+	}
+
+	return followers
+}
+
+func (set *ReplicaSet) AliveFollowers() []Instance {
+	if len(set.Instances) == 0 {
+		return []Instance{}
+	}
+
+	followers := make([]Instance, 0, len(set.Instances)-1)
+	for _, inst := range set.Instances { // nolint:gocritic
+		if inst.UUID == set.MasterUUID {
+			continue
+		}
+
+		upstream := inst.Upstream
+		downstream := inst.Downstream
+
+		if upstream == nil && downstream == nil {
+			continue
+		}
+
+		if upstream != nil {
+			if upstream.Status != UpstreamDisconnected && upstream.Status != UpstreamStopped {
+				followers = append(followers, inst)
+			}
+		} else if downstream != nil {
+			if downstream.Status != DownstreamStopped {
+				followers = append(followers, inst)
+			}
 		}
 	}
 

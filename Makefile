@@ -33,9 +33,3 @@ run_short_tests:
 .PHONY: run_tests
 run_tests: env_up
 	go test -count=1 -v -race ./...
-
-.PHONY: run_failover_test
-run_failover_test:
-	cd example && go test -run Test_Router_AddAndCheckKey -count=1 -v -tags=failover ./...
-	docker-compose -f example/docker-compose.yml stop storage_1_m storage_2_m
-	cd example && go test -run Test_Router_AddAndCheckKey -count=1 -v -tags=failover ./...

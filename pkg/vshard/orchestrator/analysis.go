@@ -22,6 +22,7 @@ const (
 	DeadMasterAndSomeFollowers       ReplicaSetState = "DeadMasterAndSomeFollowers"
 	DeadMasterWithoutFollowers       ReplicaSetState = "DeadMasterWithoutFollowers"
 	AllMasterFollowersNotReplicating ReplicaSetState = "AllMasterFollowersNotReplicating"
+	NetworkProblems                  ReplicaSetState = "NetworkProblems"
 )
 
 type ReplicationAnalysis struct {
