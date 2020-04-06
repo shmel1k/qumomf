@@ -45,7 +45,7 @@ func TestParseRouterInfo(t *testing.T) {
 	}
 	assert.Equal(t, b, info.Bucket)
 
-	rs := RouterReplicaSetParameters{
+	expected := RouterReplicaSetParameters{
 		"7432f072-c00b-4498-b1a6-6d9547a8a150": RouterInstanceParameters{
 			UUID:           "294e7310-13f0-4690-b136-169599e87ba0",
 			Status:         InstanceAvailable,
@@ -59,7 +59,17 @@ func TestParseRouterInfo(t *testing.T) {
 			NetworkTimeout: 0.5,
 		},
 	}
-	assert.Equal(t, rs, info.ReplicaSets)
+
+	require.Len(t, info.ReplicaSets, len(expected))
+	for uuid, set := range info.ReplicaSets {
+		expSet, ok := expected[uuid]
+		require.True(t, ok)
+
+		assert.Equal(t, expSet.UUID, set.UUID)
+		assert.Equal(t, expSet.Status, set.Status)
+		assert.Equal(t, expSet.URI, set.URI)
+		assert.InDelta(t, expSet.NetworkTimeout, set.NetworkTimeout, 1.0)
+	}
 }
 
 func TestParseReplication(t *testing.T) {
