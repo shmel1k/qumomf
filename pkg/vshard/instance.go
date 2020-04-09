@@ -34,6 +34,9 @@ type Instance struct {
 	// URI contains the replication user name, host IP address and port number of the instance.
 	URI string `json:"uri"`
 
+	// Readonly indicates whether the instance is readonly or readwrite.
+	Readonly bool `json:"readonly"`
+
 	// LastCheckValid indicates whether the last check of the instance by qumomf was successful or not.
 	LastCheckValid bool `json:"last_check_valid"`
 
@@ -83,6 +86,13 @@ func (i *Instance) HasAlert(t AlertType) bool {
 	}
 
 	return false
+}
+
+// InstanceInfo is a helper structure contains
+// instance info in custom format.
+type InstanceInfo struct {
+	Readonly    bool
+	StorageInfo StorageInfo
 }
 
 type StorageInfo struct {

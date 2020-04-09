@@ -47,7 +47,10 @@ func (c Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, glob
 	c.addShutdownTask(mon.Shutdown)
 
 	elector := quorum.NewLagQuorum() // TODO: move to cluster specific config
-	failover := orchestrator.NewSwapMasterFailover(cluster, elector)
+	failover := orchestrator.NewSwapMasterFailover(cluster, orchestrator.FailoverConfig{
+		Elector:                     elector,
+		ReplicaSetRecoveryBlockTime: globalCfg.Qumomf.ShardRecoveryBlockTime,
+	})
 	c.addShutdownTask(failover.Shutdown)
 
 	analysisStream := mon.Serve()
