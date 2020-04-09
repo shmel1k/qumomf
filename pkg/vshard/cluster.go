@@ -12,6 +12,7 @@ import (
 	"github.com/viciious/go-tarantool"
 
 	"github.com/shmel1k/qumomf/internal/config"
+	"github.com/shmel1k/qumomf/pkg/util"
 )
 
 func init() {
@@ -35,8 +36,13 @@ var (
 			return repl
 		`,
 	}
-	vshardStorageInfoQuery = &tarantool.Call{
-		Name: "vshard.storage.info",
+	vshardInstanceInfoQuery = &tarantool.Eval{
+		Expression: `
+			local data = {}
+			data.storage = vshard.storage.info()
+			data.read_only = box.cfg.read_only
+			return data
+		`,
 	}
 )
 
@@ -103,7 +109,7 @@ func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
 		Name: name,
 		Pool: NewConnPool(connTemplate, cfg.OverrideURIRules),
 		snapshot: Snapshot{
-			Created: timestamp(),
+			Created: util.Timestamp(),
 		},
 		readOnly: *cfg.ReadOnly,
 	}
@@ -158,6 +164,19 @@ func (c *Cluster) ReplicaSets() []ReplicaSet {
 	c.mutex.RUnlock()
 
 	return dst
+}
+
+func (c *Cluster) ReplicaSet(uuid ReplicaSetUUID) (ReplicaSet, error) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	for _, set := range c.snapshot.ReplicaSets {
+		if set.UUID == uuid {
+			return set, nil
+		}
+	}
+
+	return ReplicaSet{}, ErrReplicaSetNotFound
 }
 
 func (c *Cluster) StartRecovery() {
@@ -216,7 +235,7 @@ func (c *Cluster) Discover() {
 		log.Err(err).Msgf("Failed to discover the topology of the cluster '%s' using router '%s'", c.Name, router.UUID)
 		return
 	}
-	updatedRI.LastSeen = timestamp()
+	updatedRI.LastSeen = util.Timestamp()
 
 	// Poll each instance of the cluster and collect the information.
 	discovered := make(chan ReplicaSet, len(updatedRI.ReplicaSets))
@@ -260,7 +279,7 @@ func (c *Cluster) Discover() {
 	close(discovered)
 
 	ns := Snapshot{
-		Created:     timestamp(),
+		Created:     util.Timestamp(),
 		Routers:     snapshot.Routers,
 		ReplicaSets: make([]ReplicaSet, 0, len(discovered)),
 	}
@@ -328,21 +347,22 @@ func (c *Cluster) discoverInstances(ctx context.Context, instances []Instance) {
 
 func (c *Cluster) discoverInstance(ctx context.Context, inst *Instance) {
 	conn := c.Pool.Get(inst.URI, string(inst.UUID))
-	resp := conn.Exec(ctx, vshardStorageInfoQuery)
+	resp := conn.Exec(ctx, vshardInstanceInfoQuery)
 	if resp.Error != nil {
 		log.Err(resp.Error).Msgf("failed to discover the instance '%s'", inst.UUID)
 		inst.LastCheckValid = false
 		return
 	}
 
-	storageInfo, err := ParseStorageInfo(resp.Data)
+	info, err := ParseInstanceInfo(resp.Data)
 	if err != nil {
-		log.Err(err).Msgf("failed to read the storage info of the instance '%s'", inst.UUID)
+		log.Err(err).Msgf("failed to read info of the instance '%s'", inst.UUID)
 		inst.LastCheckValid = false
 		return
 	}
 
-	inst.StorageInfo = storageInfo
+	inst.Readonly = info.Readonly
+	inst.StorageInfo = info.StorageInfo
 	inst.LastCheckValid = true
 }
 

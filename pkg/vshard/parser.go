@@ -70,6 +70,14 @@ func (c container) getString(key string) (string, error) {
 	return v, nil
 }
 
+func (c container) getBool(key string) (bool, error) {
+	v, ok := c[key].(bool)
+	if !ok {
+		return false, fmt.Errorf("field '%s' (%T) is not found or has unexpected type in container: %v", key, c[key], c)
+	}
+	return v, nil
+}
+
 func ParseRouterInfo(data [][]interface{}) (RouterInfo, error) {
 	if len(data) == 0 {
 		return RouterInfo{}, ErrEmptyResponse
@@ -204,27 +212,54 @@ func parseRouterBucket(dt container) (RouterBucket, error) {
 	}, nil
 }
 
-func ParseStorageInfo(data [][]interface{}) (StorageInfo, error) {
+func ParseInstanceInfo(data [][]interface{}) (InstanceInfo, error) {
 	if len(data) == 0 {
-		return StorageInfo{}, ErrEmptyResponse
+		return InstanceInfo{}, ErrEmptyResponse
 	}
 
 	tuple := data[0]
 	if len(tuple) == 0 {
-		return StorageInfo{}, ErrNoInstanceInfo
+		return InstanceInfo{}, ErrNoInstanceInfo
 	}
 
 	dt, err := castToContainer(tuple[0])
 	if err != nil {
-		return StorageInfo{}, err
+		return InstanceInfo{}, err
 	}
 
-	alerts, err := parseAlerts(dt)
+	readonly, err := dt.getBool("read_only")
+	if err != nil {
+		return InstanceInfo{}, err
+	}
+
+	storageInfo, err := parseStorageInfo(dt)
+	if err != nil {
+		return InstanceInfo{}, err
+	}
+
+	return InstanceInfo{
+		Readonly:    readonly,
+		StorageInfo: storageInfo,
+	}, nil
+}
+
+func parseStorageInfo(dt container) (StorageInfo, error) {
+	_, ok := dt["storage"]
+	if !ok {
+		return StorageInfo{}, nil
+	}
+
+	s, err := dt.getContainer("storage")
 	if err != nil {
 		return StorageInfo{}, err
 	}
 
-	replication, err := dt.getContainer("replication")
+	alerts, err := parseAlerts(s)
+	if err != nil {
+		return StorageInfo{}, err
+	}
+
+	replication, err := s.getContainer("replication")
 	if err != nil {
 		return StorageInfo{}, err
 	}
@@ -246,7 +281,7 @@ func ParseStorageInfo(data [][]interface{}) (StorageInfo, error) {
 		return StorageInfo{}, err
 	}
 
-	bucket, err := parseInstanceBucket(dt)
+	bucket, err := parseInstanceBucket(s)
 	if err != nil {
 		return StorageInfo{}, err
 	}

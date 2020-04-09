@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/shmel1k/qumomf/internal/config"
+	"github.com/shmel1k/qumomf/pkg/util"
 )
 
 type tExpSet struct {
@@ -21,6 +22,7 @@ type tExpSet struct {
 type tExpInst struct {
 	uuid              InstanceUUID
 	uri               string
+	readonly          bool
 	hasUpstream       bool
 	upstreamStatus    UpstreamStatus
 	upstreamPeer      string
@@ -32,14 +34,16 @@ func TestCluster_Discover(t *testing.T) {
 		t.Skip("test requires dev env - skipping it in short mode.")
 	}
 
+	zerolog.SetGlobalLevel(zerolog.Disabled)
+
 	c := NewCluster("sandbox", config.ClusterConfig{
 		Connection: &config.ConnectConfig{
-			User:           newString("qumomf"),
-			Password:       newString("qumomf"),
-			ConnectTimeout: newDuration(1 * time.Second),
-			RequestTimeout: newDuration(1 * time.Second),
+			User:           util.NewString("qumomf"),
+			Password:       util.NewString("qumomf"),
+			ConnectTimeout: util.NewDuration(1 * time.Second),
+			RequestTimeout: util.NewDuration(1 * time.Second),
 		},
-		ReadOnly: newBool(true),
+		ReadOnly: util.NewBool(true),
 		OverrideURIRules: map[string]string{
 			"qumomf_1_m.ddk:3301": "127.0.0.1:9303",
 			"qumomf_1_s.ddk:3301": "127.0.0.1:9304",
@@ -55,12 +59,9 @@ func TestCluster_Discover(t *testing.T) {
 		},
 	})
 
-	lvl := zerolog.GlobalLevel()
-	zerolog.SetGlobalLevel(zerolog.Disabled)
 	c.Discover()
-	zerolog.SetGlobalLevel(lvl)
 
-	assert.InDelta(t, timestamp(), c.LastDiscovered(), 1000)
+	assert.InDelta(t, util.Timestamp(), c.LastDiscovered(), 1000)
 
 	routers := c.Routers()
 	require.Len(t, routers, 1)
@@ -81,12 +82,14 @@ func TestCluster_Discover(t *testing.T) {
 				{
 					uuid:              "294e7310-13f0-4690-b136-169599e87ba0",
 					uri:               "qumomf@qumomf_1_m.ddk:3301",
+					readonly:          false,
 					hasUpstream:       false,
 					replicationStatus: StatusMaster,
 				},
 				{
 					uuid:              "cd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1",
 					uri:               "qumomf@qumomf_1_s.ddk:3301",
+					readonly:          true,
 					hasUpstream:       true,
 					upstreamStatus:    UpstreamFollow,
 					upstreamPeer:      "qumomf@qumomf_1_s.ddk:3301",
@@ -101,12 +104,14 @@ func TestCluster_Discover(t *testing.T) {
 				{
 					uuid:              "f3ef657e-eb9a-4730-b420-7ea78d52797d",
 					uri:               "qumomf@qumomf_2_m.ddk:3301",
+					readonly:          false,
 					hasUpstream:       false,
 					replicationStatus: StatusMaster,
 				},
 				{
 					uuid:              "7d64dd00-161e-4c99-8b3c-d3c4635e18d2",
 					uri:               "qumomf@qumomf_2_s.ddk:3301",
+					readonly:          true,
 					hasUpstream:       true,
 					upstreamStatus:    UpstreamFollow,
 					upstreamPeer:      "qumomf@qumomf_2_s.ddk:3301",
@@ -131,6 +136,7 @@ func TestCluster_Discover(t *testing.T) {
 
 			assert.Equal(t, expInst.uuid, inst.UUID)
 			assert.Equal(t, expInst.uri, inst.URI)
+			assert.Equal(t, expInst.readonly, inst.Readonly)
 			assert.True(t, inst.LastCheckValid)
 
 			upstream := inst.Upstream

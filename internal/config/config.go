@@ -9,22 +9,24 @@ import (
 )
 
 const (
-	defaultReadOnly             = true
-	defaultUser                 = "guest"
-	defaultPassword             = "guest"
-	defaultConnectTimeout       = 1 * time.Second
-	defaultRequestTimeout       = 1 * time.Second
-	defaultClusterDiscoveryTime = 5 * time.Second
-	defaultClusterRecoveryTime  = 1 * time.Second
+	defaultReadOnly               = true
+	defaultUser                   = "guest"
+	defaultPassword               = "guest"
+	defaultConnectTimeout         = 1 * time.Second
+	defaultRequestTimeout         = 1 * time.Second
+	defaultClusterDiscoveryTime   = 5 * time.Second
+	defaultClusterRecoveryTime    = 1 * time.Second
+	defaultShardRecoveryBlockTime = 30 * time.Minute
 )
 
 type Config struct {
 	// Qumomf is a set of global options determines qumomf's behavior.
 	Qumomf struct {
-		Port                 string        `yaml:"port"`
-		ReadOnly             bool          `yaml:"readonly"`
-		ClusterDiscoveryTime time.Duration `yaml:"cluster_discovery_time"`
-		ClusterRecoveryTime  time.Duration `yaml:"cluster_recovery_time"`
+		Port                   string        `yaml:"port"`
+		ReadOnly               bool          `yaml:"readonly"`
+		ClusterDiscoveryTime   time.Duration `yaml:"cluster_discovery_time"`
+		ClusterRecoveryTime    time.Duration `yaml:"cluster_recovery_time"`
+		ShardRecoveryBlockTime time.Duration `yaml:"shard_recovery_block_time"`
 	} `yaml:"qumomf"`
 
 	// Connection contains the default connection options for each instance in clusters.
@@ -107,6 +109,7 @@ func (c *Config) withDefaults() {
 	base.ReadOnly = defaultReadOnly
 	base.ClusterDiscoveryTime = defaultClusterDiscoveryTime
 	base.ClusterRecoveryTime = defaultClusterRecoveryTime
+	base.ShardRecoveryBlockTime = defaultShardRecoveryBlockTime
 
 	connection := &ConnectConfig{}
 	connection.User = newString(defaultUser)

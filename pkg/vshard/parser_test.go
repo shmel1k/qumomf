@@ -133,19 +133,22 @@ func TestParseInstanceInfo(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	resp := conn.Exec(ctx, vshardStorageInfoQuery)
+	resp := conn.Exec(ctx, vshardInstanceInfoQuery)
 	if resp.Error != nil {
 		require.Nil(t, resp.Error, resp.String())
 	}
 
-	data, err := ParseStorageInfo(resp.Data)
+	data, err := ParseInstanceInfo(resp.Data)
 	require.Nil(t, err)
 
-	replication := &data.Replication
+	assert.True(t, data.Readonly)
+
+	storage := &data.StorageInfo
+	replication := &storage.Replication
 	assert.Equal(t, StatusFollow, replication.Status)
 	assert.InDelta(t, float64(0), replication.Delay, float64(1))
 
-	assert.Empty(t, data.Alerts)
+	assert.Empty(t, storage.Alerts)
 
 	b := InstanceBucket{
 		Active:    50,
@@ -155,5 +158,5 @@ func TestParseInstanceInfo(t *testing.T) {
 		Sending:   0,
 		Total:     50,
 	}
-	assert.Equal(t, b, data.Bucket)
+	assert.Equal(t, b, storage.Bucket)
 }
