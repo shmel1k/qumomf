@@ -56,7 +56,7 @@ type Instance struct {
 // Upstream contains statistics for the replication data uploaded by the instance.
 type Upstream struct {
 	// Peer contains the replication user name, host IP address and port number used for the instance.
-	Peer string
+	Peer string `json:"peer"`
 
 	// Status is the replication status of the instance.
 	Status UpstreamStatus `json:"status"`

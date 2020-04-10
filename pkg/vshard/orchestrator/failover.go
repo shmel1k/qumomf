@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 	"github.com/viciious/go-tarantool"
 
 	"github.com/shmel1k/qumomf/pkg/quorum"
@@ -34,11 +34,13 @@ type swapMasterFailover struct {
 	blockerSync sync.RWMutex
 	blockerTTL  time.Duration
 
-	stop chan struct{}
+	stop   chan struct{}
+	logger zerolog.Logger
 }
 
 func NewSwapMasterFailover(cluster *vshard.Cluster, cfg FailoverConfig) Failover {
 	return &swapMasterFailover{
+		logger:     cfg.Logger,
 		cluster:    cluster,
 		elector:    cfg.Elector,
 		blockers:   make([]*BlockedRecovery, 0),
@@ -75,18 +77,18 @@ func (f *swapMasterFailover) Shutdown() {
 
 func (f *swapMasterFailover) shouldBeAnalysisChecked() bool {
 	if f.cluster.ReadOnly() {
-		log.Debug().Msgf("Cluster '%s' is readonly. Skip check and recovery step for all shards.", f.cluster.Name)
+		f.logger.Info().Msgf("Readonly cluster: skip check and recovery step for all shards")
 		return false
 	}
 	if f.cluster.HasActiveRecovery() {
-		log.Debug().Msgf("Cluster '%s' has active recovery. Skip check and recovery step for all shards.", f.cluster.Name)
+		f.logger.Info().Msgf("Cluster has active recovery: skip check and recovery step for all shards")
 		return false
 	}
 	return true
 }
 
 func (f *swapMasterFailover) checkAndRecover(ctx context.Context, analysis *ReplicationAnalysis) {
-	log.Debug().Msgf("checkAndRecover: %s", *analysis)
+	f.logger.Info().Msgf("checkAndRecover: %s", *analysis)
 	set := analysis.Set
 
 	switch analysis.State {
@@ -94,42 +96,43 @@ func (f *swapMasterFailover) checkAndRecover(ctx context.Context, analysis *Repl
 		// Nothing to do, everything is OK.
 	case DeadMaster:
 		f.cluster.StartRecovery()
-		log.Info().Msgf("Master cannot be reached by qumomf. Will run failover. ReplicaSet snapshot: %s", set)
+		f.logger.Info().Msgf("Master cannot be reached by qumomf. Will run failover. ReplicaSet snapshot: %s", set)
 		recv := f.promoteFollowerToMaster(ctx, analysis)
 		if recv != nil {
 			f.registryRecovery(recv)
-			log.Info().Msgf("Finished recovery: %s", *recv)
-			log.Info().Msgf("Run a force discovery after the recovery on ReplicaSet '%s'", set.UUID)
+			f.logger.Info().Msgf("Finished recovery: %s", *recv)
+			f.logger.Info().Msgf("Run a force discovery after the recovery on ReplicaSet '%s'", set.UUID)
 			f.cluster.Discover()
 		}
 		f.cluster.StopRecovery()
 	case DeadMasterAndSomeFollowers:
 		f.cluster.StartRecovery()
-		log.Info().Msgf("Master cannot be reached by qumomf and some of its followers are unreachable. Will run failover. ReplicaSet snapshot: %s", set)
+		f.logger.Info().Msgf("Master cannot be reached by qumomf and some of its followers are unreachable. Will run failover. ReplicaSet snapshot: %s", set)
 		recv := f.promoteFollowerToMaster(ctx, analysis)
 		if recv != nil {
 			f.registryRecovery(recv)
-			log.Info().Msgf("Recovery status: %s", *recv)
-			log.Info().Msgf("Run a force discovery after the recovery on ReplicaSet '%s'", set.UUID)
+			f.logger.Info().Msgf("Recovery status: %s", *recv)
+			f.logger.Info().Msgf("Run a force discovery after the recovery on ReplicaSet '%s'", set.UUID)
 			f.cluster.Discover()
 		}
 		f.cluster.StopRecovery()
 	case DeadMasterAndFollowers:
-		log.Info().Msgf("Master cannot be reached by qumomf and none of its followers is replicating. No actions will be applied. ReplicaSet snapshot: %s", set)
+		f.logger.Info().Msgf("Master cannot be reached by qumomf and none of its followers is replicating. No actions will be applied. ReplicaSet snapshot: %s", set)
 	case AllMasterFollowersNotReplicating:
-		log.Info().Msgf("Master is reachable but none of its replicas is replicating. No actions will be applied. ReplicaSet snapshot: %s", set)
+		f.logger.Info().Msgf("Master is reachable but none of its replicas is replicating. No actions will be applied. ReplicaSet snapshot: %s", set)
 	case DeadMasterWithoutFollowers:
-		log.Info().Msgf("Master cannot be reached by qumomf and has no followers. No actions will be applied. ReplicaSet snapshot: %s", set)
+		f.logger.Info().Msgf("Master cannot be reached by qumomf and has no followers. No actions will be applied. ReplicaSet snapshot: %s", set)
 	case NetworkProblems:
-		log.Info().Msgf("Master cannot be reached by qumomf but some followers are still replicating. It might be a network problem, no actions will be applied. ReplicaSet snapshot: %s", set)
+		f.logger.Info().Msgf("Master cannot be reached by qumomf but some followers are still replicating. It might be a network problem, no actions will be applied. ReplicaSet snapshot: %s", set)
 	}
 }
 
 func (f *swapMasterFailover) promoteFollowerToMaster(ctx context.Context, analysis *ReplicationAnalysis) *Recovery {
 	badSet := analysis.Set
+	logger := f.logger.With().Str("ReplicaSet", string(badSet.UUID)).Logger()
 
 	if f.hasBlockedRecovery(badSet.UUID) {
-		log.Warn().Msgf("ReplicaSet %s has been recovered recently so new failover is blocked", badSet.UUID)
+		logger.Warn().Msg("ReplicaSet has been recovered recently so new failover is blocked")
 		return nil
 	}
 
@@ -137,7 +140,7 @@ func (f *swapMasterFailover) promoteFollowerToMaster(ctx context.Context, analys
 
 	candidateUUID, err := f.elector.ChooseMaster(badSet)
 	if err != nil {
-		log.Error().Msgf("Failed to elect a new master: %s", err)
+		logger.Err(err).Msg("Failed to elect a new master")
 
 		recv.IsSuccessful = false
 		recv.EndTimestamp = util.Timestamp()
@@ -145,7 +148,7 @@ func (f *swapMasterFailover) promoteFollowerToMaster(ctx context.Context, analys
 		return recv
 	}
 
-	log.Info().Msgf("New master is elected: %s. Going to update cluster configuration", candidateUUID)
+	logger.Info().Msgf("New master is elected: %s. Going to update cluster configuration", candidateUUID)
 
 	q := &tarantool.Call{
 		Name: funcChangeMaster,
@@ -161,17 +164,17 @@ func (f *swapMasterFailover) promoteFollowerToMaster(ctx context.Context, analys
 			conn := f.cluster.Pool.Get(inst.URI, string(inst.UUID))
 			resp := conn.Exec(ctx, q)
 			if resp.Error == nil {
-				log.Info().Msgf("Configuration was updated on node '%s'", inst.UUID)
+				logger.Info().Msgf("Configuration was updated on node '%s'", inst.UUID)
 			} else {
-				log.Error().Msgf("Failed to update configuration on node '%s': %s", inst.UUID, resp.Error)
+				logger.Err(resp.Error).Msgf("Failed to update configuration on node '%s'", inst.UUID)
 			}
 
 			if inst.UUID == candidateUUID {
 				err = f.setReadOnly(ctx, conn, false)
 				if err == nil {
-					log.Info().Msgf("Applied read_only = false to node '%s'", inst.UUID)
+					logger.Info().Msgf("Applied 'read_only=false' to node '%s'", inst.UUID)
 				} else {
-					log.Error().Msgf("Failed to disable readonly on node '%s': %s", inst.UUID, err)
+					logger.Err(err).Msgf("Failed to apply 'read_only=false' on node '%s'", inst.UUID)
 				}
 			}
 
@@ -179,9 +182,9 @@ func (f *swapMasterFailover) promoteFollowerToMaster(ctx context.Context, analys
 			if inst.UUID == badSet.MasterUUID {
 				err = f.setReadOnly(ctx, conn, true)
 				if err == nil {
-					log.Info().Msgf("Applied read_only = true to node '%s'", inst.UUID)
+					logger.Info().Msgf("Applied 'read_only=true' to node '%s'", inst.UUID)
 				} else {
-					log.Error().Msgf("Failed to enable readonly on node '%s': %s", inst.UUID, err)
+					logger.Err(err).Msgf("Failed to apply 'read_only=true' on node '%s'", inst.UUID)
 				}
 			}
 		}
@@ -192,9 +195,9 @@ func (f *swapMasterFailover) promoteFollowerToMaster(ctx context.Context, analys
 		conn := f.cluster.Pool.Get(r.URI, string(r.UUID))
 		resp := conn.Exec(ctx, q)
 		if resp.Error == nil {
-			log.Info().Msgf("Configuration was updated on router '%s'", r.UUID)
+			logger.Info().Msgf("Configuration was updated on router '%s'", r.UUID)
 		} else {
-			log.Error().Msgf("Failed to update configuration on router '%s': %s", r.UUID, resp.Error)
+			logger.Err(resp.Error).Msgf("Failed to update configuration on router '%s'", r.UUID)
 		}
 	}
 

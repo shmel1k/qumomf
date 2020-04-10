@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/shmel1k/qumomf/internal/config"
@@ -20,26 +21,39 @@ func main() {
 	flag.Parse()
 	cfg, err := config.Setup(*configPath)
 	if err != nil {
-		log.Error().Msgf("Error happened while setup config: %s", err.Error())
-		return
+		log.Fatal().Err(err).Msgf("failed to read config")
 	}
 
-	log.Info().Msg("Starting qumomf")
+	logger := initLogger(cfg)
 
-	qCoordinator := coordinator.New()
+	logger.Info().Msg("Starting qumomf")
+
+	qCoordinator := coordinator.New(logger)
 	for clusterName, clusterCfg := range cfg.Clusters {
 		err = qCoordinator.RegisterCluster(clusterName, clusterCfg, cfg)
 		if err != nil {
-			log.Err(err).Msgf("Could not register cluster with name %s", clusterName)
+			logger.Err(err).Msgf("Could not register cluster with name %s", clusterName)
 			continue
 		}
-		log.Info().Msgf("New cluster '%s' has been registered", clusterName)
+		logger.Info().Msgf("New cluster '%s' has been registered", clusterName)
 	}
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-interrupt
 
-	log.Info().Msgf("Received system signal: %s. Shutting down qumomf", sig)
+	logger.Info().Msgf("Received system signal: %s. Shutting down qumomf", sig)
 	qCoordinator.Shutdown()
+}
+
+func initLogger(cfg *config.Config) zerolog.Logger {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
+	logLevel, err := zerolog.ParseLevel(cfg.Qumomf.LogLevel)
+	if err != nil {
+		log.Warn().Msgf("Unknown Level String: '%s', defaulting to DebugLevel", cfg.Qumomf.LogLevel)
+		logLevel = zerolog.DebugLevel
+	}
+
+	return zerolog.New(os.Stdout).Level(logLevel).With().Timestamp().Logger()
 }

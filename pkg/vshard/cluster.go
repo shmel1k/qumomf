@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 	"github.com/viciious/go-tarantool"
 
 	"github.com/shmel1k/qumomf/internal/config"
@@ -60,7 +60,8 @@ type Cluster struct {
 	readOnly          bool
 	hasActiveRecovery bool
 
-	mutex sync.RWMutex
+	mutex  sync.RWMutex
+	logger zerolog.Logger
 }
 
 type Snapshot struct {
@@ -122,7 +123,13 @@ func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
 	}
 	c.snapshot.Routers = routers
 
+	c.SetLogger(zerolog.Nop())
+
 	return c
+}
+
+func (c *Cluster) SetLogger(logger zerolog.Logger) {
+	c.logger = logger
 }
 
 func (c *Cluster) LastDiscovered() int64 {
@@ -217,22 +224,22 @@ func (c *Cluster) Discover() {
 
 	router := pickUpRandomRouter(snapshot.Routers)
 	if router == nil {
-		log.Error().Msgf("There is no router in the cluster '%s' to discover its topology", c.Name)
+		c.logger.Error().Msg("There is no router in the cluster to discover its topology")
 		return
 	}
-	log.Debug().Msgf("Picked up the router '%s' in the cluster '%s' to discover its topology", router.UUID, c.Name)
+	c.logger.Debug().Msgf("Picked up the router '%s' in the cluster to discover its topology", router.UUID)
 
 	// Read the topology configuration from the selected router.
 	conn := c.Pool.Get(router.URI, string(router.UUID))
 	resp := conn.Exec(ctx, vshardRouterInfoQuery)
 	if resp.Error != nil {
-		log.Err(resp.Error).Msgf("Failed to discover the topology of the cluster '%s'. Error code: %d", c.Name, resp.ErrorCode)
+		c.logger.Err(resp.Error).Msgf("Failed to discover the topology of the cluster. Error code: %d", resp.ErrorCode)
 		return
 	}
 
 	updatedRI, err := ParseRouterInfo(resp.Data)
 	if err != nil {
-		log.Err(err).Msgf("Failed to discover the topology of the cluster '%s' using router '%s'", c.Name, router.UUID)
+		c.logger.Err(err).Msgf("Failed to discover the topology of the cluster using router '%s'", router.UUID)
 		return
 	}
 	updatedRI.LastSeen = util.Timestamp()
@@ -249,15 +256,15 @@ func (c *Cluster) Discover() {
 
 			topology, err := c.discoverReplication(ctx, master)
 			if err != nil {
-				log.Err(err).
-					Str("replicaset", string(uuid)).
+				c.logger.Err(err).
+					Str("ReplicaSet", string(uuid)).
 					Msg("Failed to update the topology, will use the previous snapshot")
 
 				// Fallback to the previous snapshot data.
 				topology, err = snapshot.TopologyOf(uuid)
 				if err == ErrReplicaSetNotFound {
-					log.Error().
-						Str("replicaset", string(uuid)).
+					c.logger.Error().
+						Str("ReplicaSet", string(uuid)).
 						Msg("There is no any previous snapshots of the topology")
 					return
 				}
@@ -294,7 +301,7 @@ func (c *Cluster) Discover() {
 		ns.ReplicaSets = append(ns.ReplicaSets, set)
 	}
 
-	log.Debug().Msgf("Snapshot of the cluster '%s' has been created: %s", c.Name, ns)
+	c.logger.Debug().Msgf("Snapshot of the cluster has been created: %s", ns)
 
 	c.mutex.Lock()
 	if c.snapshot.Created <= ns.Created {
@@ -349,14 +356,14 @@ func (c *Cluster) discoverInstance(ctx context.Context, inst *Instance) {
 	conn := c.Pool.Get(inst.URI, string(inst.UUID))
 	resp := conn.Exec(ctx, vshardInstanceInfoQuery)
 	if resp.Error != nil {
-		log.Err(resp.Error).Msgf("failed to discover the instance '%s'", inst.UUID)
+		c.logger.Err(resp.Error).Msgf("Failed to discover the instance '%s'", inst.UUID)
 		inst.LastCheckValid = false
 		return
 	}
 
 	info, err := ParseInstanceInfo(resp.Data)
 	if err != nil {
-		log.Err(err).Msgf("failed to read info of the instance '%s'", inst.UUID)
+		c.logger.Err(err).Msgf("Failed to read info of the instance '%s'", inst.UUID)
 		inst.LastCheckValid = false
 		return
 	}

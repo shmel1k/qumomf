@@ -32,7 +32,7 @@ func (r Recovery) String() string {
 	end := time.Unix(r.EndTimestamp, 0).Format(time.RFC3339)
 	duration := r.EndTimestamp - r.StartTimestamp
 
-	return fmt.Sprintf("set: %s, type: %s, failed: %s, successor: %s, period: %s - %s, duration: %ds", r.SetUUID, r.Type, r.FailedUUID, r.SuccessorUUID, start, end, duration)
+	return fmt.Sprintf("set: %s, type: %s, failed: %s, successor: %s, success: %t, period: %s - %s, duration: %ds", r.SetUUID, r.Type, r.FailedUUID, r.SuccessorUUID, r.IsSuccessful, start, end, duration)
 }
 
 type BlockedRecovery struct {

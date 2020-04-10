@@ -3,7 +3,7 @@ package orchestrator
 import (
 	"time"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 
 	"github.com/shmel1k/qumomf/pkg/vshard"
 )
@@ -18,13 +18,16 @@ func NewMonitor(cfg Config, cluster *vshard.Cluster) Monitor {
 		config:  cfg,
 		cluster: cluster,
 		stop:    make(chan struct{}, 1),
+		logger:  cfg.Logger,
 	}
 }
 
 type storageMonitor struct {
 	config  Config
 	cluster *vshard.Cluster
-	stop    chan struct{}
+
+	stop   chan struct{}
+	logger zerolog.Logger
 }
 
 func (m *storageMonitor) Serve() AnalysisReadStream {
@@ -65,7 +68,7 @@ func (m *storageMonitor) continuousDiscovery(stream AnalysisWriteStream) {
 					}(set)
 				}
 			} else {
-				log.Debug().Msgf("Waiting for %+v seconds to pass before running failure detection/recovery", checkAndRecoverWaitPeriod.Seconds())
+				m.logger.Info().Msgf("Waiting for %+v seconds to pass before running failure detection/recovery", checkAndRecoverWaitPeriod.Seconds())
 			}
 		}
 	}
@@ -93,7 +96,7 @@ func (m *storageMonitor) analyze(set vshard.ReplicaSet) *ReplicationAnalysis {
 	if err != nil {
 		// Something really weird but we have data inconsistency here.
 		// Master UUID not found in ReplicaSet.
-		log.Error().Msgf("Failed to analyze replicaset state: master UUID '%s' not found", set.MasterUUID)
+		m.logger.Error().Msgf("Failed to analyze replicaset state: master UUID '%s' not found", set.MasterUUID)
 		return nil
 	}
 	isMasterDead := !master.LastCheckValid
