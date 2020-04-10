@@ -3,6 +3,8 @@ package coordinator
 import (
 	"errors"
 
+	"github.com/rs/zerolog"
+
 	"github.com/shmel1k/qumomf/internal/config"
 	"github.com/shmel1k/qumomf/pkg/quorum"
 	"github.com/shmel1k/qumomf/pkg/vshard"
@@ -16,6 +18,8 @@ var (
 type shutdownTask func()
 
 type Coordinator struct {
+	logger zerolog.Logger
+
 	// clusters contains registered Tarantool clusters
 	// which Qumomf observes.
 	clusters map[string]*vshard.Cluster
@@ -25,8 +29,9 @@ type Coordinator struct {
 	shutdownQueue []shutdownTask
 }
 
-func New() *Coordinator {
+func New(logger zerolog.Logger) *Coordinator {
 	return &Coordinator{
+		logger:   logger,
 		clusters: make(map[string]*vshard.Cluster),
 	}
 }
@@ -36,11 +41,15 @@ func (c Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, glob
 		return ErrClusterAlreadyExist
 	}
 
+	clusterLogger := c.logger.With().Str("cluster", name).Logger()
+
 	cluster := vshard.NewCluster(name, cfg)
+	cluster.SetLogger(clusterLogger)
 	c.clusters[name] = cluster
 	c.addShutdownTask(cluster.Shutdown)
 
 	mon := orchestrator.NewMonitor(orchestrator.Config{
+		Logger:            clusterLogger,
 		RecoveryPollTime:  globalCfg.Qumomf.ClusterRecoveryTime,
 		DiscoveryPollTime: globalCfg.Qumomf.ClusterDiscoveryTime,
 	}, cluster)
@@ -48,6 +57,7 @@ func (c Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, glob
 
 	elector := quorum.NewLagQuorum() // TODO: move to cluster specific config
 	failover := orchestrator.NewSwapMasterFailover(cluster, orchestrator.FailoverConfig{
+		Logger:                      clusterLogger,
 		Elector:                     elector,
 		ReplicaSetRecoveryBlockTime: globalCfg.Qumomf.ShardRecoveryBlockTime,
 	})

@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -33,8 +32,6 @@ func TestCluster_Discover(t *testing.T) {
 	if testing.Short() {
 		t.Skip("test requires dev env - skipping it in short mode.")
 	}
-
-	zerolog.SetGlobalLevel(zerolog.Disabled)
 
 	c := NewCluster("sandbox", config.ClusterConfig{
 		Connection: &config.ConnectConfig{

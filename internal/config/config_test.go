@@ -24,6 +24,7 @@ func TestSetup_ValidPath(t *testing.T) {
 	require.NotNil(t, cfg)
 
 	assert.Equal(t, ":8080", cfg.Qumomf.Port)
+	assert.Equal(t, "debug", cfg.Qumomf.LogLevel)
 	assert.True(t, cfg.Qumomf.ReadOnly)
 	assert.Equal(t, 60*time.Second, cfg.Qumomf.ClusterDiscoveryTime)
 	assert.Equal(t, 5*time.Second, cfg.Qumomf.ClusterRecoveryTime)

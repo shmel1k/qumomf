@@ -19,8 +19,6 @@ func Test_swapMasterFailover_promoteFollowerToMaster(t *testing.T) {
 		t.Skip("test requires dev env - skipping it in short mode.")
 	}
 
-	zerolog.SetGlobalLevel(zerolog.Disabled)
-
 	c := vshard.NewCluster("sandbox", config.ClusterConfig{
 		Connection: &config.ConnectConfig{
 			User:           util.NewString("qumomf"),
@@ -53,6 +51,7 @@ func Test_swapMasterFailover_promoteFollowerToMaster(t *testing.T) {
 	var fv *swapMasterFailover
 	{
 		failover := NewSwapMasterFailover(c, FailoverConfig{
+			Logger:                      zerolog.Nop(),
 			Elector:                     elector,
 			ReplicaSetRecoveryBlockTime: 2 * time.Second,
 		})
