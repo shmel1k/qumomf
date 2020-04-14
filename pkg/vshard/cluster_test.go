@@ -33,29 +33,7 @@ func TestCluster_Discover(t *testing.T) {
 		t.Skip("test requires dev env - skipping it in short mode.")
 	}
 
-	c := NewCluster("sandbox", config.ClusterConfig{
-		Connection: &config.ConnectConfig{
-			User:           util.NewString("qumomf"),
-			Password:       util.NewString("qumomf"),
-			ConnectTimeout: util.NewDuration(1 * time.Second),
-			RequestTimeout: util.NewDuration(1 * time.Second),
-		},
-		ReadOnly: util.NewBool(true),
-		OverrideURIRules: map[string]string{
-			"qumomf_1_m.ddk:3301": "127.0.0.1:9303",
-			"qumomf_1_s.ddk:3301": "127.0.0.1:9304",
-			"qumomf_2_m.ddk:3301": "127.0.0.1:9305",
-			"qumomf_2_s.ddk:3301": "127.0.0.1:9306",
-		},
-		Routers: []config.RouterConfig{
-			{
-				Name: "router_1",
-				Addr: "127.0.0.1:9301",
-				UUID: "router_uuid_1",
-			},
-		},
-	})
-
+	c := mockCluster()
 	c.Discover()
 
 	assert.InDelta(t, util.Timestamp(), c.LastDiscovered(), 1000)
@@ -149,4 +127,99 @@ func TestCluster_Discover(t *testing.T) {
 			assert.Equal(t, expInst.replicationStatus, inst.StorageInfo.Replication.Status)
 		}
 	}
+}
+
+func TestCluster_Instance(t *testing.T) {
+	sets := []ReplicaSet{
+		{
+			UUID:       "set_1",
+			MasterUUID: "replica_1",
+			Instances: []Instance{
+				{
+					UUID: "set_1_replica_1",
+				},
+				{
+					UUID: "set_1_replica_2",
+				},
+				{
+					UUID: "set_1_replica_3",
+				},
+			},
+		},
+		{
+			UUID:       "set_2",
+			MasterUUID: "replica_2",
+			Instances: []Instance{
+				{
+					UUID: "set_2_replica_1",
+				},
+				{
+					UUID: "set_2_replica_2",
+				},
+			},
+		},
+	}
+
+	c := mockCluster()
+	c.snapshot = Snapshot{
+		Created:     util.Timestamp(),
+		Routers:     c.Routers(),
+		ReplicaSets: sets,
+	}
+
+	tests := []struct {
+		name    string
+		uuid    InstanceUUID
+		wantErr bool
+	}{
+		{
+			name:    "KnownUUID_ShouldReturnInstance",
+			uuid:    "set_2_replica_1",
+			wantErr: false,
+		},
+		{
+			name:    "UnknownUUID_ShouldReturnErr",
+			uuid:    "set_2_replica_1000",
+			wantErr: true,
+		},
+	}
+
+	for _, tv := range tests {
+		tt := tv
+		t.Run(tt.name, func(t *testing.T) {
+			inst, err := c.Instance(tt.uuid)
+			if tt.wantErr {
+				require.NotNil(t, err)
+				assert.Equal(t, ErrInstanceNotFound, err)
+			} else {
+				require.Nil(t, err)
+				assert.Equal(t, tt.uuid, inst.UUID)
+			}
+		})
+	}
+}
+
+func mockCluster() *Cluster {
+	return NewCluster("sandbox", config.ClusterConfig{
+		Connection: &config.ConnectConfig{
+			User:           util.NewString("qumomf"),
+			Password:       util.NewString("qumomf"),
+			ConnectTimeout: util.NewDuration(1 * time.Second),
+			RequestTimeout: util.NewDuration(1 * time.Second),
+		},
+		ReadOnly: util.NewBool(true),
+		OverrideURIRules: map[string]string{
+			"qumomf_1_m.ddk:3301": "127.0.0.1:9303",
+			"qumomf_1_s.ddk:3301": "127.0.0.1:9304",
+			"qumomf_2_m.ddk:3301": "127.0.0.1:9305",
+			"qumomf_2_s.ddk:3301": "127.0.0.1:9306",
+		},
+		Routers: []config.RouterConfig{
+			{
+				Name: "router_1",
+				Addr: "127.0.0.1:9301",
+				UUID: "router_uuid_1",
+			},
+		},
+	})
 }
