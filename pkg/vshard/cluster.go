@@ -49,12 +49,13 @@ var (
 var (
 	ErrMasterNotAvailable = errors.New("master of the replica set is not available so its topology could not be discovered")
 	ErrReplicaSetNotFound = errors.New("replica set not found")
+	ErrInstanceNotFound   = errors.New("instance not found")
 )
 
 type Cluster struct {
 	Name string
-	Pool ConnPool
 
+	pool     ConnPool
 	snapshot Snapshot
 
 	readOnly          bool
@@ -108,7 +109,7 @@ func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
 
 	c := &Cluster{
 		Name: name,
-		Pool: NewConnPool(connTemplate, cfg.OverrideURIRules),
+		pool: NewConnPool(connTemplate, cfg.OverrideURIRules),
 		snapshot: Snapshot{
 			Created: util.Timestamp(),
 		},
@@ -130,6 +131,14 @@ func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
 
 func (c *Cluster) SetLogger(logger zerolog.Logger) {
 	c.logger = logger
+}
+
+func (c *Cluster) ConnRouter(r *Router) *Connector {
+	return c.pool.Get(r.URI, string(r.UUID))
+}
+
+func (c *Cluster) ConnInstance(inst *Instance) *Connector {
+	return c.pool.Get(inst.URI, string(inst.UUID))
 }
 
 func (c *Cluster) LastDiscovered() int64 {
@@ -186,6 +195,35 @@ func (c *Cluster) ReplicaSet(uuid ReplicaSetUUID) (ReplicaSet, error) {
 	return ReplicaSet{}, ErrReplicaSetNotFound
 }
 
+func (c *Cluster) Instances() []Instance {
+	c.mutex.RLock()
+	res := make([]Instance, 0)
+	for i := range c.snapshot.ReplicaSets {
+		set := &c.snapshot.ReplicaSets[i]
+		res = append(res, set.Instances...)
+	}
+	c.mutex.RUnlock()
+
+	return res
+}
+
+func (c *Cluster) Instance(uuid InstanceUUID) (Instance, error) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	for i := range c.snapshot.ReplicaSets {
+		set := &c.snapshot.ReplicaSets[i]
+		for j := range set.Instances {
+			inst := &set.Instances[j]
+			if inst.UUID == uuid {
+				return *inst, nil
+			}
+		}
+	}
+
+	return Instance{}, ErrInstanceNotFound
+}
+
 func (c *Cluster) StartRecovery() {
 	c.mutex.Lock()
 	c.hasActiveRecovery = true
@@ -208,7 +246,7 @@ func (c *Cluster) HasActiveRecovery() bool {
 }
 
 func (c *Cluster) Shutdown() {
-	c.Pool.Close()
+	c.pool.Close()
 }
 
 func (c *Cluster) Discover() {
@@ -230,7 +268,7 @@ func (c *Cluster) Discover() {
 	c.logger.Debug().Msgf("Picked up the router '%s' in the cluster to discover its topology", router.UUID)
 
 	// Read the topology configuration from the selected router.
-	conn := c.Pool.Get(router.URI, string(router.UUID))
+	conn := c.pool.Get(router.URI, string(router.UUID))
 	resp := conn.Exec(ctx, vshardRouterInfoQuery)
 	if resp.Error != nil {
 		c.logger.Err(resp.Error).Msgf("Failed to discover the topology of the cluster. Error code: %d", resp.ErrorCode)
@@ -315,7 +353,7 @@ func (c *Cluster) discoverReplication(ctx context.Context, master RouterInstance
 		return []Instance{}, ErrMasterNotAvailable
 	}
 
-	conn := c.Pool.Get(master.URI, string(master.UUID))
+	conn := c.pool.Get(master.URI, string(master.UUID))
 	resp := conn.Exec(ctx, vshardBoxInfoQuery)
 	if resp.Error != nil {
 		return []Instance{}, resp.Error
@@ -353,7 +391,7 @@ func (c *Cluster) discoverInstances(ctx context.Context, instances []Instance) {
 }
 
 func (c *Cluster) discoverInstance(ctx context.Context, inst *Instance) {
-	conn := c.Pool.Get(inst.URI, string(inst.UUID))
+	conn := c.ConnInstance(inst)
 	resp := conn.Exec(ctx, vshardInstanceInfoQuery)
 	if resp.Error != nil {
 		c.logger.Err(resp.Error).Msgf("Failed to discover the instance '%s'", inst.UUID)
@@ -364,7 +402,7 @@ func (c *Cluster) discoverInstance(ctx context.Context, inst *Instance) {
 	info, err := ParseInstanceInfo(resp.Data)
 	if err != nil {
 		c.logger.Err(err).Msgf("Failed to read info of the instance '%s'", inst.UUID)
-		inst.LastCheckValid = false
+		inst.LastCheckValid = false // TODO: not accurate
 		return
 	}
 

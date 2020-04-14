@@ -48,14 +48,14 @@ func Test_swapMasterFailover_promoteFollowerToMaster(t *testing.T) {
 
 	elector := quorum.NewLagQuorum()
 
-	var fv *swapMasterFailover
+	var fv *promoteFailover
 	{
-		failover := NewSwapMasterFailover(c, FailoverConfig{
+		failover := NewPromoteFailover(c, FailoverConfig{
 			Logger:                      zerolog.Nop(),
 			Elector:                     elector,
 			ReplicaSetRecoveryBlockTime: 2 * time.Second,
 		})
-		fv = failover.(*swapMasterFailover)
+		fv = failover.(*promoteFailover)
 	}
 
 	stream := NewAnalysisStream()

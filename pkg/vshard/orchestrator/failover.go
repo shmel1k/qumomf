@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"sort"
 	"sync"
 	"time"
 
@@ -14,11 +15,16 @@ import (
 )
 
 const (
-	funcChangeMaster = "qumomf_change_master"
+	cleanupPeriod = 1 * time.Minute
 )
 
+type recoveryRole string
+
 const (
-	cleanupPeriod = 1 * time.Minute
+	roleSuccessor recoveryRole = "successor"
+	roleReplica   recoveryRole = "replica"
+	roleFailed    recoveryRole = "failed"
+	roleRouter    recoveryRole = "router"
 )
 
 type Failover interface {
@@ -26,7 +32,7 @@ type Failover interface {
 	Shutdown()
 }
 
-type swapMasterFailover struct {
+type promoteFailover struct {
 	cluster *vshard.Cluster
 	elector quorum.Quorum
 
@@ -38,8 +44,8 @@ type swapMasterFailover struct {
 	logger zerolog.Logger
 }
 
-func NewSwapMasterFailover(cluster *vshard.Cluster, cfg FailoverConfig) Failover {
-	return &swapMasterFailover{
+func NewPromoteFailover(cluster *vshard.Cluster, cfg FailoverConfig) Failover {
+	return &promoteFailover{
 		logger:     cfg.Logger,
 		cluster:    cluster,
 		elector:    cfg.Elector,
@@ -49,7 +55,7 @@ func NewSwapMasterFailover(cluster *vshard.Cluster, cfg FailoverConfig) Failover
 	}
 }
 
-func (f *swapMasterFailover) Serve(stream AnalysisReadStream) {
+func (f *promoteFailover) Serve(stream AnalysisReadStream) {
 	ctx := context.Background()
 
 	cleanupTick := time.NewTicker(cleanupPeriod)
@@ -71,11 +77,11 @@ func (f *swapMasterFailover) Serve(stream AnalysisReadStream) {
 	}()
 }
 
-func (f *swapMasterFailover) Shutdown() {
+func (f *promoteFailover) Shutdown() {
 	f.stop <- struct{}{}
 }
 
-func (f *swapMasterFailover) shouldBeAnalysisChecked() bool {
+func (f *promoteFailover) shouldBeAnalysisChecked() bool {
 	if f.cluster.ReadOnly() {
 		f.logger.Info().Msgf("Readonly cluster: skip check and recovery step for all shards")
 		return false
@@ -87,7 +93,7 @@ func (f *swapMasterFailover) shouldBeAnalysisChecked() bool {
 	return true
 }
 
-func (f *swapMasterFailover) checkAndRecover(ctx context.Context, analysis *ReplicationAnalysis) {
+func (f *promoteFailover) checkAndRecover(ctx context.Context, analysis *ReplicationAnalysis) {
 	f.logger.Info().Msgf("checkAndRecover: %s", *analysis)
 	set := analysis.Set
 
@@ -127,7 +133,7 @@ func (f *swapMasterFailover) checkAndRecover(ctx context.Context, analysis *Repl
 	}
 }
 
-func (f *swapMasterFailover) promoteFollowerToMaster(ctx context.Context, analysis *ReplicationAnalysis) *Recovery {
+func (f *promoteFailover) promoteFollowerToMaster(ctx context.Context, analysis *ReplicationAnalysis) *Recovery {
 	badSet := analysis.Set
 	logger := f.logger.With().Str("ReplicaSet", string(badSet.UUID)).Logger()
 
@@ -137,97 +143,93 @@ func (f *swapMasterFailover) promoteFollowerToMaster(ctx context.Context, analys
 	}
 
 	recv := NewRecovery(analysis)
+	defer func() {
+		recv.EndTimestamp = util.Timestamp()
+	}()
 
 	candidateUUID, err := f.elector.ChooseMaster(badSet)
 	if err != nil {
 		logger.Err(err).Msg("Failed to elect a new master")
-
-		recv.IsSuccessful = false
-		recv.EndTimestamp = util.Timestamp()
-
 		return recv
 	}
+	recv.SuccessorUUID = candidateUUID
 
 	logger.Info().Msgf("New master is elected: %s. Going to update cluster configuration", candidateUUID)
 
-	q := &tarantool.Call{
-		Name: funcChangeMaster,
-		Tuple: []interface{}{
-			string(badSet.UUID), string(badSet.MasterUUID), string(candidateUUID),
-		},
+	// First priority is updating the configuration of the new master.
+	// If any error, exit from the recovery.
+	candidate, _ := f.cluster.Instance(candidateUUID)
+	conn := f.cluster.ConnInstance(&candidate)
+	applier := confApplier{
+		role:          roleSuccessor,
+		setUUID:       badSet.UUID,
+		failedUUID:    badSet.MasterUUID,
+		candidateUUID: candidateUUID,
+		conn:          conn,
+	}
+	err = applier.apply(ctx)
+	if err == nil {
+		logger.Info().Msgf("Configuration of the chosen master '%s' was updated", candidateUUID)
+	} else {
+		logger.Err(err).Msgf("Recovery fatal error: failed to update the configuration of the chosen master '%s'", candidateUUID)
+		return recv
 	}
 
-	// Update configuration on replica sets.
-	for _, set := range f.cluster.ReplicaSets() {
-		for i := range set.Instances {
-			inst := &set.Instances[i]
-			conn := f.cluster.Pool.Get(inst.URI, string(inst.UUID))
-			resp := conn.Exec(ctx, q)
-			if resp.Error == nil {
-				logger.Info().Msgf("Configuration was updated on node '%s'", inst.UUID)
-			} else {
-				logger.Err(resp.Error).Msgf("Failed to update configuration on node '%s'", inst.UUID)
-			}
+	instances := f.cluster.Instances()
+	sort.Sort(NewInstanceFailoverSorter(instances))
 
-			if inst.UUID == candidateUUID {
-				err = f.setReadOnly(ctx, conn, false)
-				if err == nil {
-					logger.Info().Msgf("Applied 'read_only=false' to node '%s'", inst.UUID)
-				} else {
-					logger.Err(err).Msgf("Failed to apply 'read_only=false' on node '%s'", inst.UUID)
-				}
-			}
+	// Update the configuration of all the cluster members.
+	for i := range instances {
+		inst := &instances[i]
 
-			// Just try
-			if inst.UUID == badSet.MasterUUID {
-				err = f.setReadOnly(ctx, conn, true)
-				if err == nil {
-					logger.Info().Msgf("Applied 'read_only=true' to node '%s'", inst.UUID)
-				} else {
-					logger.Err(err).Msgf("Failed to apply 'read_only=true' on node '%s'", inst.UUID)
-				}
-			}
+		if inst.UUID == candidateUUID {
+			continue
+		}
+
+		conn := f.cluster.ConnInstance(inst)
+		applier := confApplier{
+			role:          roleReplica,
+			setUUID:       badSet.UUID,
+			failedUUID:    badSet.MasterUUID,
+			candidateUUID: candidateUUID,
+			conn:          conn,
+		}
+		if inst.UUID == badSet.MasterUUID {
+			applier.role = roleFailed
+		}
+
+		err = applier.apply(ctx)
+		if err == nil {
+			logger.Info().Msgf("Configuration was updated on node '%s'", inst.UUID)
+		} else {
+			logger.Err(err).Msgf("Failed to update configuration on node '%s'", inst.UUID)
 		}
 	}
 
-	// Update configuration on routers.
-	for _, r := range f.cluster.Routers() {
-		conn := f.cluster.Pool.Get(r.URI, string(r.UUID))
-		resp := conn.Exec(ctx, q)
-		if resp.Error == nil {
+	routers := f.cluster.Routers()
+	for i := range routers {
+		r := &routers[i]
+		conn := f.cluster.ConnRouter(r)
+		applier := confApplier{
+			role:          roleRouter,
+			setUUID:       badSet.UUID,
+			failedUUID:    badSet.MasterUUID,
+			candidateUUID: candidateUUID,
+			conn:          conn,
+		}
+		err := applier.apply(ctx)
+		if err == nil {
 			logger.Info().Msgf("Configuration was updated on router '%s'", r.UUID)
 		} else {
-			logger.Err(resp.Error).Msgf("Failed to update configuration on router '%s'", r.UUID)
+			logger.Err(err).Msgf("Failed to update configuration on router '%s'", r.UUID)
 		}
 	}
 
 	recv.IsSuccessful = true
-	recv.SuccessorUUID = candidateUUID
-	recv.EndTimestamp = util.Timestamp()
-
 	return recv
 }
 
-func (f *swapMasterFailover) setReadOnly(ctx context.Context, conn *vshard.Connector, ro bool) error {
-	call := &tarantool.Eval{
-		Expression: `
-			local arg = {...}
-			box.cfg({
-        		read_only = arg[1],
-    		})
-		`,
-		Tuple: []interface{}{ro},
-	}
-
-	resp := conn.Exec(ctx, call)
-	if resp.Error != nil {
-		return resp.Error
-	}
-
-	return nil
-}
-
-func (f *swapMasterFailover) registryRecovery(r *Recovery) {
+func (f *promoteFailover) registryRecovery(r *Recovery) {
 	blocker := NewBlockedRecovery(r, f.blockerTTL)
 
 	f.blockerSync.Lock()
@@ -235,7 +237,7 @@ func (f *swapMasterFailover) registryRecovery(r *Recovery) {
 	f.blockerSync.Unlock()
 }
 
-func (f *swapMasterFailover) hasBlockedRecovery(uuid vshard.ReplicaSetUUID) bool {
+func (f *promoteFailover) hasBlockedRecovery(uuid vshard.ReplicaSetUUID) bool {
 	f.blockerSync.RLock()
 	defer f.blockerSync.RUnlock()
 
@@ -248,7 +250,7 @@ func (f *swapMasterFailover) hasBlockedRecovery(uuid vshard.ReplicaSetUUID) bool
 	return false
 }
 
-func (f *swapMasterFailover) cleanup(force bool) {
+func (f *promoteFailover) cleanup(force bool) {
 	// It is not a frequent operation, so do not
 	// see any reason to optimize this place.
 
@@ -271,4 +273,59 @@ func (f *swapMasterFailover) cleanup(force bool) {
 	f.blockerSync.Lock()
 	f.blockers = alive
 	f.blockerSync.Unlock()
+}
+
+// confApplier applies instance role during the failover/switchover.
+type confApplier struct {
+	role          recoveryRole
+	setUUID       vshard.ReplicaSetUUID
+	failedUUID    vshard.InstanceUUID
+	candidateUUID vshard.InstanceUUID
+	conn          *vshard.Connector
+}
+
+func (ca confApplier) apply(ctx context.Context) error {
+	call := ca.buildQuery()
+	resp := ca.conn.Exec(ctx, call)
+	return resp.Error
+}
+
+func (ca confApplier) isReadOnlyRole() bool {
+	return ca.role != roleSuccessor
+}
+
+func (ca confApplier) buildQuery() tarantool.Query {
+	if ca.role == roleRouter {
+		return ca.buildRouterQuery()
+	}
+	return ca.buildStorageQuery()
+}
+
+func (ca confApplier) buildRouterQuery() tarantool.Query {
+	return &tarantool.Call{
+		Name: "qumomf_change_master",
+		Tuple: []interface{}{
+			string(ca.setUUID), string(ca.failedUUID), string(ca.candidateUUID),
+		},
+	}
+}
+
+func (ca confApplier) buildStorageQuery() tarantool.Query {
+	ro := ca.isReadOnlyRole()
+
+	call := &tarantool.Eval{
+		Expression: `
+			local arg = {...}
+
+			qumomf_change_master(arg[1], arg[2], arg[3])
+			box.cfg({
+        		read_only = arg[4],
+    		})
+		`,
+		Tuple: []interface{}{
+			string(ca.setUUID), string(ca.failedUUID), string(ca.candidateUUID), ro,
+		},
+	}
+
+	return call
 }
