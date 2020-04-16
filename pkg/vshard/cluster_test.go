@@ -133,7 +133,7 @@ func TestCluster_Instance(t *testing.T) {
 	sets := []ReplicaSet{
 		{
 			UUID:       "set_1",
-			MasterUUID: "replica_1",
+			MasterUUID: "set_1_replica_1",
 			Instances: []Instance{
 				{
 					UUID: "set_1_replica_1",
@@ -148,7 +148,7 @@ func TestCluster_Instance(t *testing.T) {
 		},
 		{
 			UUID:       "set_2",
-			MasterUUID: "replica_2",
+			MasterUUID: "set_2_replica_2",
 			Instances: []Instance{
 				{
 					UUID: "set_2_replica_1",

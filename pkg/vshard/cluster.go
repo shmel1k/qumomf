@@ -2,7 +2,6 @@ package vshard
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"math/rand"
 	"sync"
@@ -65,40 +64,6 @@ type Cluster struct {
 	logger zerolog.Logger
 }
 
-type Snapshot struct {
-	Created     int64        `json:"created"`
-	Routers     []Router     `json:"routers"`
-	ReplicaSets []ReplicaSet `json:"replica_sets"`
-}
-
-func (s Snapshot) String() string {
-	j, _ := json.Marshal(s)
-	return string(j)
-}
-
-func (s *Snapshot) Copy() Snapshot {
-	dst := Snapshot{
-		Created:     s.Created,
-		Routers:     make([]Router, len(s.Routers)),
-		ReplicaSets: make([]ReplicaSet, len(s.ReplicaSets)),
-	}
-
-	copy(dst.Routers, s.Routers)
-	copy(dst.ReplicaSets, s.ReplicaSets)
-
-	return dst
-}
-
-func (s *Snapshot) TopologyOf(uuid ReplicaSetUUID) ([]Instance, error) {
-	for _, set := range s.ReplicaSets {
-		if set.UUID == uuid {
-			return set.Instances, nil
-		}
-	}
-
-	return []Instance{}, ErrReplicaSetNotFound
-}
-
 func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
 	connTemplate := ConnOptions{
 		User:           *cfg.Connection.User,
@@ -133,12 +98,8 @@ func (c *Cluster) SetLogger(logger zerolog.Logger) {
 	c.logger = logger
 }
 
-func (c *Cluster) ConnRouter(r *Router) *Connector {
-	return c.pool.Get(r.URI, string(r.UUID))
-}
-
-func (c *Cluster) ConnInstance(inst *Instance) *Connector {
-	return c.pool.Get(inst.URI, string(inst.UUID))
+func (c *Cluster) Connector(uri string) *Connector {
+	return c.pool.Get(uri)
 }
 
 func (c *Cluster) LastDiscovered() int64 {
@@ -268,7 +229,7 @@ func (c *Cluster) Discover() {
 	c.logger.Debug().Msgf("Picked up the router '%s' in the cluster to discover its topology", router.UUID)
 
 	// Read the topology configuration from the selected router.
-	conn := c.pool.Get(router.URI, string(router.UUID))
+	conn := c.Connector(router.URI)
 	resp := conn.Exec(ctx, vshardRouterInfoQuery)
 	if resp.Error != nil {
 		c.logger.Err(resp.Error).Msgf("Failed to discover the topology of the cluster. Error code: %d", resp.ErrorCode)
@@ -353,7 +314,7 @@ func (c *Cluster) discoverReplication(ctx context.Context, master RouterInstance
 		return []Instance{}, ErrMasterNotAvailable
 	}
 
-	conn := c.pool.Get(master.URI, string(master.UUID))
+	conn := c.Connector(master.URI)
 	resp := conn.Exec(ctx, vshardBoxInfoQuery)
 	if resp.Error != nil {
 		return []Instance{}, resp.Error
@@ -391,7 +352,7 @@ func (c *Cluster) discoverInstances(ctx context.Context, instances []Instance) {
 }
 
 func (c *Cluster) discoverInstance(ctx context.Context, inst *Instance) {
-	conn := c.ConnInstance(inst)
+	conn := c.Connector(inst.URI)
 	resp := conn.Exec(ctx, vshardInstanceInfoQuery)
 	if resp.Error != nil {
 		c.logger.Err(resp.Error).Msgf("Failed to discover the instance '%s'", inst.UUID)
@@ -411,7 +372,7 @@ func (c *Cluster) discoverInstance(ctx context.Context, inst *Instance) {
 	inst.LastCheckValid = true
 }
 
-// pickUpRandomRouter selects a random router amongst provided ones.
+// pickUpRandomRouter returns a random router.
 func pickUpRandomRouter(routers []Router) *Router {
 	if len(routers) == 0 {
 		return nil

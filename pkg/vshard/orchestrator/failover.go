@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,13 +19,43 @@ const (
 	cleanupPeriod = 1 * time.Minute
 )
 
-type recoveryRole string
-
 const (
-	roleSuccessor recoveryRole = "successor"
-	roleReplica   recoveryRole = "replica"
-	roleFailed    recoveryRole = "failed"
-	roleRouter    recoveryRole = "router"
+	// recoveryLua is a template of Lua script which should be executed
+	// on every cluster nodes during the failover.
+	recoveryLua = `
+		log = require('log')
+
+		log.warn("qumomf: start recovery")
+
+		local cfg = {}
+		local is_storage = vshard.router.internal.static_router == nil 
+		if is_storage then
+			cfg = table.deepcopy(vshard.storage.internal.current_cfg)
+		else
+			cfg = table.deepcopy(vshard.router.internal.static_router.current_cfg)
+		end
+
+		for replica_uuid in pairs(cfg.sharding["{set_uuid}"].replicas) do
+			is_master = replica_uuid == "{new_master_uuid}"
+			cfg.sharding["{set_uuid}"].replicas[replica_uuid].master = is_master 
+		end
+
+		if is_storage then
+			log.warn("qumomf: apply new vshard configuration on storage")
+			local this_uuid = vshard.storage.internal.this_replica.uuid
+			vshard.storage.cfg(cfg, this_uuid)
+
+			if vshard.storage.internal.this_replicaset.uuid == "{set_uuid}" then 
+				box.cfg({
+					read_only = this_uuid ~= "{new_master_uuid}",
+				})
+			end
+		else
+			log.warn("qumomf: apply new vshard configuration on router")
+			vshard.router.cfg(cfg)
+		end
+		log.warn("qumomf: end recovery")
+	`
 )
 
 type Failover interface {
@@ -156,23 +187,31 @@ func (f *promoteFailover) promoteFollowerToMaster(ctx context.Context, analysis 
 
 	logger.Info().Msgf("New master is elected: %s. Going to update cluster configuration", candidateUUID)
 
+	recvQuery := buildRecoveryQuery(badSet.UUID, candidateUUID)
+
 	// First priority is updating the configuration of the new master.
 	// If any error, exit from the recovery.
 	candidate, _ := f.cluster.Instance(candidateUUID)
-	conn := f.cluster.ConnInstance(&candidate)
-	applier := confApplier{
-		role:          roleSuccessor,
-		setUUID:       badSet.UUID,
-		failedUUID:    badSet.MasterUUID,
-		candidateUUID: candidateUUID,
-		conn:          conn,
-	}
-	err = applier.apply(ctx)
-	if err == nil {
+	conn := f.cluster.Connector(candidate.URI)
+	resp := conn.Exec(ctx, recvQuery)
+	if resp.Error == nil {
 		logger.Info().Msgf("Configuration of the chosen master '%s' was updated", candidateUUID)
 	} else {
-		logger.Err(err).Msgf("Recovery fatal error: failed to update the configuration of the chosen master '%s'", candidateUUID)
+		logger.Err(resp.Error).Msgf("Recovery fatal error: failed to update the configuration of the chosen master '%s'", candidateUUID)
 		return recv
+	}
+
+	// Update routers configuration to accept write requests as quickly as possible.
+	routers := f.cluster.Routers()
+	for i := range routers {
+		r := &routers[i]
+		conn := f.cluster.Connector(r.URI)
+		resp := conn.Exec(ctx, recvQuery)
+		if resp.Error == nil {
+			logger.Info().Msgf("Configuration was updated on router '%s'", r.UUID)
+		} else {
+			logger.Err(resp.Error).Msgf("Failed to update configuration on router '%s'", r.UUID)
+		}
 	}
 
 	instances := f.cluster.Instances()
@@ -186,42 +225,12 @@ func (f *promoteFailover) promoteFollowerToMaster(ctx context.Context, analysis 
 			continue
 		}
 
-		conn := f.cluster.ConnInstance(inst)
-		applier := confApplier{
-			role:          roleReplica,
-			setUUID:       badSet.UUID,
-			failedUUID:    badSet.MasterUUID,
-			candidateUUID: candidateUUID,
-			conn:          conn,
-		}
-		if inst.UUID == badSet.MasterUUID {
-			applier.role = roleFailed
-		}
-
-		err = applier.apply(ctx)
-		if err == nil {
+		conn := f.cluster.Connector(inst.URI)
+		resp := conn.Exec(ctx, recvQuery)
+		if resp.Error == nil {
 			logger.Info().Msgf("Configuration was updated on node '%s'", inst.UUID)
 		} else {
-			logger.Err(err).Msgf("Failed to update configuration on node '%s'", inst.UUID)
-		}
-	}
-
-	routers := f.cluster.Routers()
-	for i := range routers {
-		r := &routers[i]
-		conn := f.cluster.ConnRouter(r)
-		applier := confApplier{
-			role:          roleRouter,
-			setUUID:       badSet.UUID,
-			failedUUID:    badSet.MasterUUID,
-			candidateUUID: candidateUUID,
-			conn:          conn,
-		}
-		err := applier.apply(ctx)
-		if err == nil {
-			logger.Info().Msgf("Configuration was updated on router '%s'", r.UUID)
-		} else {
-			logger.Err(err).Msgf("Failed to update configuration on router '%s'", r.UUID)
+			logger.Err(resp.Error).Msgf("Failed to update configuration on node '%s'", inst.UUID)
 		}
 	}
 
@@ -275,57 +284,16 @@ func (f *promoteFailover) cleanup(force bool) {
 	f.blockerSync.Unlock()
 }
 
-// confApplier applies instance role during the failover/switchover.
-type confApplier struct {
-	role          recoveryRole
-	setUUID       vshard.ReplicaSetUUID
-	failedUUID    vshard.InstanceUUID
-	candidateUUID vshard.InstanceUUID
-	conn          *vshard.Connector
-}
-
-func (ca confApplier) apply(ctx context.Context) error {
-	call := ca.buildQuery()
-	resp := ca.conn.Exec(ctx, call)
-	return resp.Error
-}
-
-func (ca confApplier) isReadOnlyRole() bool {
-	return ca.role != roleSuccessor
-}
-
-func (ca confApplier) buildQuery() tarantool.Query {
-	if ca.role == roleRouter {
-		return ca.buildRouterQuery()
-	}
-	return ca.buildStorageQuery()
-}
-
-func (ca confApplier) buildRouterQuery() tarantool.Query {
-	return &tarantool.Call{
-		Name: "qumomf_change_master",
-		Tuple: []interface{}{
-			string(ca.setUUID), string(ca.failedUUID), string(ca.candidateUUID),
-		},
+func buildRecoveryQuery(set vshard.ReplicaSetUUID, candidate vshard.InstanceUUID) tarantool.Query {
+	lua := generateRecoveryLua(set, candidate)
+	return &tarantool.Eval{
+		Expression: lua,
 	}
 }
 
-func (ca confApplier) buildStorageQuery() tarantool.Query {
-	ro := ca.isReadOnlyRole()
+func generateRecoveryLua(set vshard.ReplicaSetUUID, candidate vshard.InstanceUUID) string {
+	lua := strings.ReplaceAll(recoveryLua, "{set_uuid}", string(set))
+	lua = strings.ReplaceAll(lua, "{new_master_uuid}", string(candidate))
 
-	call := &tarantool.Eval{
-		Expression: `
-			local arg = {...}
-
-			qumomf_change_master(arg[1], arg[2], arg[3])
-			box.cfg({
-        		read_only = arg[4],
-    		})
-		`,
-		Tuple: []interface{}{
-			string(ca.setUUID), string(ca.failedUUID), string(ca.candidateUUID), ro,
-		},
-	}
-
-	return call
+	return lua
 }

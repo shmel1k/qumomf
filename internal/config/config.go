@@ -13,7 +13,7 @@ const (
 	defaultReadOnly               = true
 	defaultUser                   = "guest"
 	defaultPassword               = "guest"
-	defaultConnectTimeout         = 1 * time.Second
+	defaultConnectTimeout         = 500 * time.Millisecond
 	defaultRequestTimeout         = 1 * time.Second
 	defaultClusterDiscoveryTime   = 5 * time.Second
 	defaultClusterRecoveryTime    = 1 * time.Second

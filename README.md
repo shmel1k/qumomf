@@ -17,32 +17,25 @@ clusters:
 
 You might override default connection settings for each cluster.
 
-Add Lua procedure on all storages or adapt it for your environment:
+```yaml
+clusters:
+  my_cluster:
+    connection:
+      user: 'tnt'
+      password: 'tnt'
+      connect_timeout: 10s
+      request_timeout: 10s
 
-```lua
-function qumomf_change_master(shard_uuid, old_master_uuid, new_master_uuid)
-    local replicas = cfg.sharding[shard_uuid].replicas
-    replicas[old_master_uuid].master = false
-    replicas[new_master_uuid].master = true
-    vshard.storage.cfg(cfg, os.getenv('STORAGE_UUID'))
-end
+    routers:
+      - name: 'my_cluster_router_1'
+        addr: 'localhost:3301'
+        uuid: 'my_cluster_router_1'
 ```
 
-On routers:
+For a sample vshard configuration, 
+see [qumomf example](/example) or [Tarantool documentation](https://www.tarantool.io/en/doc/1.10/reference/reference_rock/vshard/vshard_quick/#vshard-config-cluster-example).
 
-```lua
-function qumomf_change_master(shard_uuid, old_master_uuid, new_master_uuid)
-    local replicas = cfg.sharding[shard_uuid].replicas
-    replicas[old_master_uuid].master = false
-    replicas[new_master_uuid].master = true
-    vshard.router.cfg(cfg)
-end
-```
-
-`cfg` is a local variable contains the configuration of the replica sets. 
-For a sample configuration, see [qumomf example](/example) or [Tarantool documentation](https://www.tarantool.io/en/doc/1.10/reference/reference_rock/vshard/vshard_quick/#vshard-config-cluster-example).
-
-Start or restart qumomf and the orchestrator will discover all configured clusters.
+Start qumomf, and it will discover all defined clusters.
 
 ## Test
 

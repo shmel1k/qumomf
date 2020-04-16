@@ -29,14 +29,14 @@ func TestSetup_ValidPath(t *testing.T) {
 	assert.Equal(t, 60*time.Second, cfg.Qumomf.ClusterDiscoveryTime)
 	assert.Equal(t, 5*time.Second, cfg.Qumomf.ClusterRecoveryTime)
 
+	assert.Equal(t, 500*time.Millisecond, *cfg.Connection.ConnectTimeout)
 	assert.Equal(t, 1*time.Second, *cfg.Connection.RequestTimeout)
-	assert.Equal(t, 1*time.Second, *cfg.Connection.ConnectTimeout)
 
 	connOpts := cfg.Connection
 	require.NotNil(t, connOpts)
 	assert.Equal(t, "qumomf", *connOpts.User)
 	assert.Equal(t, "qumomf", *connOpts.Password)
-	assert.Equal(t, 1*time.Second, *connOpts.ConnectTimeout)
+	assert.Equal(t, 500*time.Millisecond, *connOpts.ConnectTimeout)
 	assert.Equal(t, 1*time.Second, *connOpts.RequestTimeout)
 
 	expected := map[string]ClusterConfig{
@@ -44,7 +44,7 @@ func TestSetup_ValidPath(t *testing.T) {
 			Connection: &ConnectConfig{
 				User:           newString("qumomf"),
 				Password:       newString("qumomf"),
-				ConnectTimeout: newDuration(1 * time.Second),
+				ConnectTimeout: newDuration(500 * time.Millisecond),
 				RequestTimeout: newDuration(1 * time.Second),
 			},
 			ReadOnly: newBool(false),

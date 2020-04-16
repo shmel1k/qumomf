@@ -47,12 +47,5 @@ end)
 vshard.router.bootstrap()
 vshard.router.discovery_wakeup()
 
-function qumomf_change_master(shard_uuid, old_master_uuid, new_master_uuid)
-    local replicas = cfg.sharding[shard_uuid].replicas
-    replicas[old_master_uuid].master = false
-    replicas[new_master_uuid].master = true
-    vshard.router.cfg(cfg)
-end
-
 dofile('/etc/tarantool/instances.enabled/qumomf/router/router.lua')
 

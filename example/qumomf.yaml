@@ -9,7 +9,7 @@ qumomf:
 connection:
   user: 'qumomf'
   password: 'qumomf'
-  connect_timeout: '1s'
+  connect_timeout: '500ms'
   request_timeout: '1s'
 
 clusters:

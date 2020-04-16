@@ -72,11 +72,4 @@ box.once("init", function()
     })
 end)
 
-function qumomf_change_master(shard_uuid, old_master_uuid, new_master_uuid)
-    local replicas = cfg.sharding[shard_uuid].replicas
-    replicas[old_master_uuid].master = false
-    replicas[new_master_uuid].master = true
-    vshard.storage.cfg(cfg, os.getenv('STORAGE_UUID'))
-end
-
 dofile('/etc/tarantool/instances.enabled/qumomf/storage/storage.lua')
