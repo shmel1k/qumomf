@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/shmel1k/qumomf/internal/config"
 	"github.com/shmel1k/qumomf/pkg/quorum"
@@ -14,17 +15,19 @@ import (
 	"github.com/shmel1k/qumomf/pkg/vshard"
 )
 
-func Test_swapMasterFailover_promoteFollowerToMaster(t *testing.T) {
-	if testing.Short() {
-		t.Skip("test requires dev env - skipping it in short mode.")
-	}
+type failoverTestSuite struct {
+	suite.Suite
+	cluster  *vshard.Cluster
+	failover Failover
+}
 
-	c := vshard.NewCluster("sandbox", config.ClusterConfig{
+func (s *failoverTestSuite) SetupTest() {
+	s.cluster = vshard.NewCluster("sandbox", config.ClusterConfig{
 		Connection: &config.ConnectConfig{
 			User:           util.NewString("qumomf"),
 			Password:       util.NewString("qumomf"),
 			ConnectTimeout: util.NewDuration(1 * time.Second),
-			RequestTimeout: util.NewDuration(1 * time.Second),
+			RequestTimeout: util.NewDuration(3 * time.Second),
 		},
 		ReadOnly: util.NewBool(false),
 		OverrideURIRules: map[string]string{
@@ -41,28 +44,41 @@ func Test_swapMasterFailover_promoteFollowerToMaster(t *testing.T) {
 			},
 		},
 	})
-	defer c.Shutdown()
+}
 
-	c.Discover()
-	require.InDelta(t, util.Timestamp(), c.LastDiscovered(), 1)
+func (s *failoverTestSuite) AfterTest(_, _ string) {
+	if s.failover != nil {
+		s.failover.Shutdown()
+	}
+	if s.cluster != nil {
+		s.cluster.Shutdown()
+	}
+}
+
+func (s *failoverTestSuite) Test_promoteFailover_promoteFollowerToMaster() {
+	t := s.T()
+
+	if testing.Short() {
+		t.Skip("test requires dev env - skipping it in short mode.")
+	}
+
+	s.cluster.Discover()
+	require.InDelta(t, util.Timestamp(), s.cluster.LastDiscovered(), 1)
 
 	elector := quorum.NewLagQuorum()
 
-	var fv *promoteFailover
-	{
-		failover := NewPromoteFailover(c, FailoverConfig{
-			Logger:                      zerolog.Nop(),
-			Elector:                     elector,
-			ReplicaSetRecoveryBlockTime: 2 * time.Second,
-		})
-		fv = failover.(*promoteFailover)
-	}
+	s.failover = NewPromoteFailover(s.cluster, FailoverConfig{
+		Logger: zerolog.New(zerolog.NewConsoleWriter()),
+		//Logger:                      zerolog.Nop(),
+		Elector:                     elector,
+		ReplicaSetRecoveryBlockTime: 2 * time.Second,
+	})
+	fv := s.failover.(*promoteFailover)
 
 	stream := NewAnalysisStream()
 	fv.Serve(stream)
-	defer fv.Shutdown()
 
-	set, err := c.ReplicaSet("7432f072-c00b-4498-b1a6-6d9547a8a150")
+	set, err := s.cluster.ReplicaSet("7432f072-c00b-4498-b1a6-6d9547a8a150")
 	require.Nil(t, err)
 
 	analysis := &ReplicationAnalysis{
@@ -74,19 +90,19 @@ func Test_swapMasterFailover_promoteFollowerToMaster(t *testing.T) {
 	}
 	stream <- analysis
 
-	time.Sleep(200 * time.Millisecond)
-
-	require.True(t, fv.hasBlockedRecovery(set.UUID))
+	require.Eventually(t, func() bool {
+		return fv.hasBlockedRecovery(set.UUID)
+	}, 5*time.Second, 100*time.Millisecond)
 	require.Len(t, fv.blockers, 1)
 	recv := fv.blockers[0].Recovery
 
-	assert.InDelta(t, util.Timestamp(), recv.StartTimestamp, 1)
-	assert.InDelta(t, util.Timestamp(), recv.EndTimestamp, 1)
-	assert.True(t, recv.IsSuccessful)
+	require.True(t, recv.IsSuccessful)
+	assert.InDelta(t, util.Timestamp(), recv.StartTimestamp, 5)
+	assert.InDelta(t, util.Timestamp(), recv.EndTimestamp, 2)
 	assert.Equal(t, string(analysis.State), recv.Type)
 	assert.Equal(t, set.MasterUUID, recv.FailedUUID)
 
-	recvSet, err := c.ReplicaSet("7432f072-c00b-4498-b1a6-6d9547a8a150")
+	recvSet, err := s.cluster.ReplicaSet("7432f072-c00b-4498-b1a6-6d9547a8a150")
 	require.Nil(t, err)
 
 	assert.Equal(t, recv.SuccessorUUID, recvSet.MasterUUID)
@@ -97,8 +113,8 @@ func Test_swapMasterFailover_promoteFollowerToMaster(t *testing.T) {
 
 	alive := recvSet.AliveFollowers()
 	assert.Len(t, alive, 1)
-	for _, f := range alive {
-		assert.True(t, f.Readonly)
+	for i := range alive {
+		assert.True(t, alive[i].Readonly)
 	}
 
 	// Ensure that anti-flapping is working.
@@ -114,6 +130,17 @@ func Test_swapMasterFailover_promoteFollowerToMaster(t *testing.T) {
 
 	stream <- analysis
 
+	require.Eventually(t, func() bool {
+		return fv.hasBlockedRecovery(set.UUID)
+	}, 5*time.Second, 100*time.Millisecond)
 	require.Len(t, fv.blockers, 1)
 	assert.True(t, recv != fv.blockers[0].Recovery)
+
+	recv = fv.blockers[0].Recovery
+	assert.True(t, recv.IsSuccessful)
+	assert.Equal(t, set.MasterUUID, recv.SuccessorUUID)
+}
+
+func TestFailover(t *testing.T) {
+	suite.Run(t, new(failoverTestSuite))
 }

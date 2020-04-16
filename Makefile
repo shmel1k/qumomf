@@ -11,7 +11,7 @@ run: build
 .PHONY: env_up
 env_up:
 	docker-compose -f example/docker-compose.yml up -d
-	sleep 1
+	sleep 2
 	docker-compose -f example/docker-compose.yml ps
 
 .PHONY: env_down

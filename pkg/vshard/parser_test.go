@@ -17,7 +17,6 @@ func TestParseRouterInfo(t *testing.T) {
 	conn := setupConnection("127.0.0.1:9301", ConnOptions{
 		User:           "qumomf",
 		Password:       "qumomf",
-		UUID:           "router_1_uuid",
 		ConnectTimeout: 1 * time.Second,
 		QueryTimeout:   1 * time.Second,
 	})
@@ -80,7 +79,6 @@ func TestParseReplication(t *testing.T) {
 	conn := setupConnection("127.0.0.1:9303", ConnOptions{
 		User:           "qumomf",
 		Password:       "qumomf",
-		UUID:           "294e7310-13f0-4690-b136-169599e87ba0",
 		ConnectTimeout: 1 * time.Second,
 		QueryTimeout:   1 * time.Second,
 	})
@@ -124,7 +122,6 @@ func TestParseInstanceInfo(t *testing.T) {
 	conn := setupConnection("127.0.0.1:9304", ConnOptions{
 		User:           "qumomf",
 		Password:       "qumomf",
-		UUID:           "294e7310-13f0-4690-b136-169599e87ba0",
 		ConnectTimeout: 1 * time.Second,
 		QueryTimeout:   1 * time.Second,
 	})

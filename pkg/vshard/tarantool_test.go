@@ -95,7 +95,6 @@ func TestPool_Get(t *testing.T) {
 	connOpts := ConnOptions{
 		User:     "qumomf",
 		Password: "qumomf",
-		UUID:     "uuid",
 	}
 	p := NewConnPool(connOpts, nil)
 	uri := "tarantool.repl:3301"
@@ -106,7 +105,7 @@ func TestPool_Get(t *testing.T) {
 	wg.Add(n)
 	for i := 0; i < n; i++ {
 		go func() {
-			ch <- p.Get(uri, "uuid")
+			ch <- p.Get(uri)
 			wg.Done()
 		}()
 	}
@@ -128,7 +127,6 @@ func BenchmarkPool_Get(b *testing.B) {
 	connOpts := ConnOptions{
 		User:     "qumomf",
 		Password: "qumomf",
-		UUID:     "uuid",
 	}
 	p := NewConnPool(connOpts, nil)
 
@@ -144,7 +142,7 @@ func BenchmarkPool_Get(b *testing.B) {
 		ub.WriteString(":3301")
 		uri = ub.String()
 
-		conn = p.Get(uri, "uuid")
+		conn = p.Get(uri)
 		conn.Close()
 	}
 }

@@ -9,15 +9,21 @@ import (
 	"github.com/viciious/go-tarantool"
 )
 
+const maxRetries = 2 // TODO: move to config
+
+var tntRetryableErrors = []uint{
+	tarantool.ErrNoConnection,
+	tarantool.ErrTimeout,
+}
+
 type ConnPool interface {
-	Get(uri, uuid string) *Connector
+	Get(uri string) *Connector
 	Close()
 }
 
 type ConnOptions struct {
 	User           string
 	Password       string
-	UUID           string
 	ConnectTimeout time.Duration
 	QueryTimeout   time.Duration
 }
@@ -40,7 +46,7 @@ func NewConnPool(template ConnOptions, rules OverrideURIRules) ConnPool {
 	}
 }
 
-func (p *pool) Get(uri, uuid string) *Connector {
+func (p *pool) Get(uri string) *Connector {
 	u := removeUserInfo(uri)
 	u = overrideURI(u, p.rules)
 
@@ -52,9 +58,7 @@ func (p *pool) Get(uri, uuid string) *Connector {
 	}
 
 	p.mutex.Lock()
-	opts := p.template
-	opts.UUID = uuid
-	conn = setupConnection(u, opts)
+	conn = setupConnection(u, p.template)
 	p.m[u] = conn
 	p.mutex.Unlock()
 
@@ -89,14 +93,33 @@ type Connector struct {
 }
 
 func (c *Connector) Exec(ctx context.Context, q tarantool.Query, opts ...tarantool.ExecOption) *tarantool.Result {
-	conn, err := c.conn.Connect()
-	if err != nil {
-		return &tarantool.Result{
-			Error: err,
+	var resp *tarantool.Result
+	for i := 0; i < maxRetries; i++ {
+		conn, err := c.conn.Connect()
+		if err != nil {
+			return &tarantool.Result{
+				Error: err,
+			}
 		}
+
+		select {
+		case <-ctx.Done():
+			return &tarantool.Result{
+				Error:     tarantool.NewContextError(ctx, conn, "Exec error"),
+				ErrorCode: tarantool.ErrTimeout,
+			}
+		default:
+		}
+
+		resp = conn.Exec(ctx, q, opts...)
+		if resp.Error != nil && isRetryable(resp.ErrorCode) {
+			conn.Close()
+			continue
+		}
+		return resp
 	}
 
-	return conn.Exec(ctx, q, opts...)
+	return resp
 }
 
 func (c *Connector) Close() {
@@ -107,7 +130,6 @@ func setupConnection(uri string, c ConnOptions) *Connector {
 	cfg := &tarantool.Options{
 		User:           c.User,
 		Password:       c.Password,
-		UUID:           c.UUID,
 		ConnectTimeout: c.ConnectTimeout,
 		QueryTimeout:   c.QueryTimeout,
 	}
@@ -116,4 +138,14 @@ func setupConnection(uri string, c ConnOptions) *Connector {
 	return &Connector{
 		conn: conn,
 	}
+}
+
+func isRetryable(code uint) bool {
+	for _, rc := range tntRetryableErrors {
+		if rc == code {
+			return true
+		}
+	}
+
+	return false
 }
