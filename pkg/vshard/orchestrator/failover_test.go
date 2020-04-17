@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/shmel1k/qumomf/internal/config"
 	"github.com/shmel1k/qumomf/pkg/quorum"
 	"github.com/shmel1k/qumomf/pkg/util"
 	"github.com/shmel1k/qumomf/pkg/vshard"
@@ -22,28 +21,8 @@ type failoverTestSuite struct {
 }
 
 func (s *failoverTestSuite) SetupTest() {
-	s.cluster = vshard.NewCluster("sandbox", config.ClusterConfig{
-		Connection: &config.ConnectConfig{
-			User:           util.NewString("qumomf"),
-			Password:       util.NewString("qumomf"),
-			ConnectTimeout: util.NewDuration(1 * time.Second),
-			RequestTimeout: util.NewDuration(3 * time.Second),
-		},
-		ReadOnly: util.NewBool(false),
-		OverrideURIRules: map[string]string{
-			"qumomf_1_m.ddk:3301": "127.0.0.1:9303",
-			"qumomf_1_s.ddk:3301": "127.0.0.1:9304",
-			"qumomf_2_m.ddk:3301": "127.0.0.1:9305",
-			"qumomf_2_s.ddk:3301": "127.0.0.1:9306",
-		},
-		Routers: []config.RouterConfig{
-			{
-				Name: "router_1",
-				Addr: "127.0.0.1:9301",
-				UUID: "router_uuid_1",
-			},
-		},
-	})
+	s.cluster = vshard.MockCluster()
+	s.cluster.SetReadOnly(false)
 }
 
 func (s *failoverTestSuite) AfterTest(_, _ string) {

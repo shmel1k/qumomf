@@ -3,12 +3,10 @@ package vshard
 import (
 	"sort"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/shmel1k/qumomf/internal/config"
 	"github.com/shmel1k/qumomf/pkg/util"
 )
 
@@ -33,7 +31,7 @@ func TestCluster_Discover(t *testing.T) {
 		t.Skip("test requires dev env - skipping it in short mode.")
 	}
 
-	c := mockCluster()
+	c := MockCluster()
 	c.Discover()
 
 	assert.InDelta(t, util.Timestamp(), c.LastDiscovered(), 1000)
@@ -160,7 +158,7 @@ func TestCluster_Instance(t *testing.T) {
 		},
 	}
 
-	c := mockCluster()
+	c := MockCluster()
 	c.snapshot = Snapshot{
 		Created:     util.Timestamp(),
 		Routers:     c.Routers(),
@@ -197,29 +195,4 @@ func TestCluster_Instance(t *testing.T) {
 			}
 		})
 	}
-}
-
-func mockCluster() *Cluster {
-	return NewCluster("sandbox", config.ClusterConfig{
-		Connection: &config.ConnectConfig{
-			User:           util.NewString("qumomf"),
-			Password:       util.NewString("qumomf"),
-			ConnectTimeout: util.NewDuration(1 * time.Second),
-			RequestTimeout: util.NewDuration(1 * time.Second),
-		},
-		ReadOnly: util.NewBool(true),
-		OverrideURIRules: map[string]string{
-			"qumomf_1_m.ddk:3301": "127.0.0.1:9303",
-			"qumomf_1_s.ddk:3301": "127.0.0.1:9304",
-			"qumomf_2_m.ddk:3301": "127.0.0.1:9305",
-			"qumomf_2_s.ddk:3301": "127.0.0.1:9306",
-		},
-		Routers: []config.RouterConfig{
-			{
-				Name: "router_1",
-				Addr: "127.0.0.1:9301",
-				UUID: "router_uuid_1",
-			},
-		},
-	})
 }
