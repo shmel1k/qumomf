@@ -45,13 +45,12 @@ func (s *failoverTestSuite) Test_promoteFailover_promoteFollowerToMaster() {
 	require.InDelta(t, util.Timestamp(), s.cluster.LastDiscovered(), 1)
 
 	elector := quorum.NewLagQuorum()
+	logger := zerolog.New(zerolog.NewConsoleWriter())
 
 	s.failover = NewPromoteFailover(s.cluster, FailoverConfig{
-		Logger: zerolog.New(zerolog.NewConsoleWriter()),
-		//Logger:                      zerolog.Nop(),
 		Elector:                     elector,
 		ReplicaSetRecoveryBlockTime: 2 * time.Second,
-	})
+	}, logger)
 	fv := s.failover.(*promoteFailover)
 
 	stream := NewAnalysisStream()

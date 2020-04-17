@@ -75,14 +75,14 @@ type promoteFailover struct {
 	logger zerolog.Logger
 }
 
-func NewPromoteFailover(cluster *vshard.Cluster, cfg FailoverConfig) Failover {
+func NewPromoteFailover(cluster *vshard.Cluster, cfg FailoverConfig, logger zerolog.Logger) Failover {
 	return &promoteFailover{
-		logger:     cfg.Logger,
 		cluster:    cluster,
 		elector:    cfg.Elector,
 		blockers:   make([]*BlockedRecovery, 0),
 		blockerTTL: cfg.ReplicaSetRecoveryBlockTime,
 		stop:       make(chan struct{}, 1),
+		logger:     logger,
 	}
 }
 

@@ -13,12 +13,12 @@ type Monitor interface {
 	Shutdown()
 }
 
-func NewMonitor(cfg Config, cluster *vshard.Cluster) Monitor {
+func NewMonitor(cluster *vshard.Cluster, cfg Config, logger zerolog.Logger) Monitor {
 	return &storageMonitor{
 		config:  cfg,
 		cluster: cluster,
 		stop:    make(chan struct{}, 1),
-		logger:  cfg.Logger,
+		logger:  logger,
 	}
 }
 
@@ -61,7 +61,7 @@ func (m *storageMonitor) continuousDiscovery(stream AnalysisWriteStream) {
 			if runCheckAndRecoverOperationsTimeRipe() {
 				for _, set := range m.cluster.ReplicaSets() {
 					go func(set vshard.ReplicaSet) {
-						analysis := m.analyze(set)
+						analysis := analyze(set, m.logger)
 						if analysis != nil {
 							stream <- analysis
 						}
@@ -74,8 +74,7 @@ func (m *storageMonitor) continuousDiscovery(stream AnalysisWriteStream) {
 	}
 }
 
-//nolint: gocyclo
-func (m *storageMonitor) analyze(set vshard.ReplicaSet) *ReplicationAnalysis {
+func analyze(set vshard.ReplicaSet, logger zerolog.Logger) *ReplicationAnalysis { //nolint: gocyclo
 	countReplicas := 0
 	countWorkingReplicas := 0
 	countReplicatingReplicas := 0
@@ -96,7 +95,7 @@ func (m *storageMonitor) analyze(set vshard.ReplicaSet) *ReplicationAnalysis {
 	if err != nil {
 		// Something really weird but we have data inconsistency here.
 		// Master UUID not found in ReplicaSet.
-		m.logger.Error().Msgf("Failed to analyze replicaset state: master UUID '%s' not found", set.MasterUUID)
+		logger.Error().Msgf("Failed to analyze replicaset state: master UUID '%s' not found", set.MasterUUID)
 		return nil
 	}
 	isMasterDead := !master.LastCheckValid
