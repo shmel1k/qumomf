@@ -85,8 +85,14 @@ func analyze(set vshard.ReplicaSet, logger zerolog.Logger) *ReplicationAnalysis 
 		if r.LastCheckValid {
 			countWorkingReplicas++
 
-			if r.StorageInfo.Replication.Status == vshard.StatusFollow {
+			status := r.StorageInfo.Replication.Status
+			if status == vshard.StatusFollow {
 				countReplicatingReplicas++
+			} else if status == vshard.StatusMaster {
+				countReplicatingReplicas++
+				logger.Warn().
+					Str("ReplicaSet", string(set.UUID)).
+					Msgf("Found M-M replication ('%s'-'%s') in ReplicaSet", set.MasterUUID, r.UUID)
 			}
 		}
 	}
