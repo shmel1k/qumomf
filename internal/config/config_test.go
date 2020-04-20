@@ -28,6 +28,8 @@ func TestSetup_ValidPath(t *testing.T) {
 	assert.True(t, cfg.Qumomf.ReadOnly)
 	assert.Equal(t, 60*time.Second, cfg.Qumomf.ClusterDiscoveryTime)
 	assert.Equal(t, 5*time.Second, cfg.Qumomf.ClusterRecoveryTime)
+	assert.Equal(t, 30*time.Minute, cfg.Qumomf.ShardRecoveryBlockTime)
+	assert.Equal(t, 10*time.Minute, cfg.Qumomf.InstanceRecoveryBlockTime)
 
 	assert.Equal(t, 500*time.Millisecond, *cfg.Connection.ConnectTimeout)
 	assert.Equal(t, 1*time.Second, *cfg.Connection.RequestTimeout)

@@ -51,6 +51,9 @@ type Instance struct {
 
 	// StorageInfo contains the information about the storage instance.
 	StorageInfo StorageInfo `json:"storage_info"`
+
+	// VShardFingerprint is a CRC32 hash code of the shard topology configuration.
+	VShardFingerprint uint64 `json:"vshard_fingerprint"`
 }
 
 // Upstream contains statistics for the replication data uploaded by the instance.
@@ -91,8 +94,9 @@ func (i *Instance) HasAlert(t AlertType) bool {
 // InstanceInfo is a helper structure contains
 // instance info in custom format.
 type InstanceInfo struct {
-	Readonly    bool
-	StorageInfo StorageInfo
+	Readonly          bool
+	VShardFingerprint uint64
+	StorageInfo       StorageInfo
 }
 
 type StorageInfo struct {

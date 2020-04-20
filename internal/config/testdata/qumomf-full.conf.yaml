@@ -5,6 +5,7 @@ qumomf:
   cluster_discovery_time: '60s'
   cluster_recovery_time: '5s'
   shard_recovery_block_time: '30m'
+  instance_recovery_block_time: '10m'
 
 connection:
   user: 'qumomf'

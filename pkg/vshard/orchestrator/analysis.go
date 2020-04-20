@@ -23,14 +23,16 @@ const (
 	DeadMasterWithoutFollowers       ReplicaSetState = "DeadMasterWithoutFollowers"
 	AllMasterFollowersNotReplicating ReplicaSetState = "AllMasterFollowersNotReplicating"
 	NetworkProblems                  ReplicaSetState = "NetworkProblems"
+	InconsistentVShardConfiguration  ReplicaSetState = "InconsistentVShardConfiguration"
 )
 
 type ReplicationAnalysis struct {
-	Set                      vshard.ReplicaSet
-	CountReplicas            int
-	CountWorkingReplicas     int
-	CountReplicatingReplicas int
-	State                    ReplicaSetState
+	Set                         vshard.ReplicaSet
+	CountReplicas               int // Total number of replicas in set
+	CountWorkingReplicas        int // Total number of successfully discovered replicas
+	CountReplicatingReplicas    int // Total number of replicas confirmed replication
+	CountInconsistentVShardConf int // Total number of replicas with other than master vshard configuration
+	State                       ReplicaSetState
 }
 
 func (a ReplicationAnalysis) String() string {

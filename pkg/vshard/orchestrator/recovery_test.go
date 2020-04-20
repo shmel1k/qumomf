@@ -22,28 +22,21 @@ var mockAnalysis = &ReplicationAnalysis{
 }
 
 func TestNewRecovery(t *testing.T) {
-	r := NewRecovery(mockAnalysis)
+	ttl := 100 * time.Second
+	r := NewSetRecovery(mockAnalysis, ttl)
 
 	assert.Equal(t, mockAnalysis.Set.UUID, r.SetUUID)
 	assert.Equal(t, mockAnalysis.Set.MasterUUID, r.FailedUUID)
-	assert.Equal(t, string(DeadMaster), r.Type)
+	assert.Equal(t, string(DeadMaster), r.Reason())
 	assert.InDelta(t, util.Timestamp(), r.StartTimestamp, 5)
+	assert.InDelta(t, time.Now().Add(ttl).UTC().Unix(), r.Expiration, 1)
 }
 
-func TestNewBlockedRecovery(t *testing.T) {
-	r := NewRecovery(mockAnalysis)
-	ttl := 100 * time.Second
-
-	blocker := NewBlockedRecovery(r, ttl)
-	assert.InDelta(t, time.Now().Add(ttl).UTC().Unix(), blocker.Expiration, 1)
-}
-
-func TestBlockedRecovery_Expired(t *testing.T) {
-	r := NewRecovery(mockAnalysis)
+func TestRecovery_Expired(t *testing.T) {
 	ttl := 1 * time.Second
+	r := NewSetRecovery(mockAnalysis, ttl)
 
-	blocker := NewBlockedRecovery(r, ttl)
-	assert.False(t, blocker.Expired())
+	assert.False(t, r.Expired())
 	time.Sleep(2 * ttl)
-	assert.True(t, blocker.Expired())
+	assert.True(t, r.Expired())
 }

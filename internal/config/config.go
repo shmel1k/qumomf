@@ -9,26 +9,28 @@ import (
 )
 
 const (
-	defaultLogLevel               = "debug"
-	defaultReadOnly               = true
-	defaultUser                   = "guest"
-	defaultPassword               = "guest"
-	defaultConnectTimeout         = 500 * time.Millisecond
-	defaultRequestTimeout         = 1 * time.Second
-	defaultClusterDiscoveryTime   = 5 * time.Second
-	defaultClusterRecoveryTime    = 1 * time.Second
-	defaultShardRecoveryBlockTime = 30 * time.Minute
+	defaultLogLevel                  = "debug"
+	defaultReadOnly                  = true
+	defaultUser                      = "guest"
+	defaultPassword                  = "guest"
+	defaultConnectTimeout            = 500 * time.Millisecond
+	defaultRequestTimeout            = 1 * time.Second
+	defaultClusterDiscoveryTime      = 5 * time.Second
+	defaultClusterRecoveryTime       = 1 * time.Second
+	defaultShardRecoveryBlockTime    = 30 * time.Minute
+	defaultInstanceRecoveryBlockTime = 10 * time.Minute
 )
 
 type Config struct {
 	// Qumomf is a set of global options determines qumomf's behavior.
 	Qumomf struct {
-		Port                   string        `yaml:"port"`
-		LogLevel               string        `yaml:"log_level"`
-		ReadOnly               bool          `yaml:"readonly"`
-		ClusterDiscoveryTime   time.Duration `yaml:"cluster_discovery_time"`
-		ClusterRecoveryTime    time.Duration `yaml:"cluster_recovery_time"`
-		ShardRecoveryBlockTime time.Duration `yaml:"shard_recovery_block_time"`
+		Port                      string        `yaml:"port"`
+		LogLevel                  string        `yaml:"log_level"`
+		ReadOnly                  bool          `yaml:"readonly"`
+		ClusterDiscoveryTime      time.Duration `yaml:"cluster_discovery_time"`
+		ClusterRecoveryTime       time.Duration `yaml:"cluster_recovery_time"`
+		ShardRecoveryBlockTime    time.Duration `yaml:"shard_recovery_block_time"`
+		InstanceRecoveryBlockTime time.Duration `yaml:"instance_recovery_block_time"`
 	} `yaml:"qumomf"`
 
 	// Connection contains the default connection options for each instance in clusters.
@@ -113,6 +115,7 @@ func (c *Config) withDefaults() {
 	base.ClusterDiscoveryTime = defaultClusterDiscoveryTime
 	base.ClusterRecoveryTime = defaultClusterRecoveryTime
 	base.ShardRecoveryBlockTime = defaultShardRecoveryBlockTime
+	base.InstanceRecoveryBlockTime = defaultInstanceRecoveryBlockTime
 
 	connection := &ConnectConfig{}
 	connection.User = newString(defaultUser)

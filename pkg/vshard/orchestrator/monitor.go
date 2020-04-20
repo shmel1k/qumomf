@@ -75,9 +75,18 @@ func (m *storageMonitor) continuousDiscovery(stream AnalysisWriteStream) {
 }
 
 func analyze(set vshard.ReplicaSet, logger zerolog.Logger) *ReplicationAnalysis { //nolint: gocyclo
+	master, err := set.Master()
+	if err != nil {
+		// Something really weird but we have data inconsistency here.
+		// Master UUID not found in ReplicaSet.
+		logger.Error().Msgf("Failed to analyze replicaset state: master UUID '%s' not found", set.MasterUUID)
+		return nil
+	}
+
 	countReplicas := 0
 	countWorkingReplicas := 0
 	countReplicatingReplicas := 0
+	countInconsistentVShardConf := 0
 	followers := set.Followers()
 	for i := range followers {
 		r := &followers[i]
@@ -94,17 +103,14 @@ func analyze(set vshard.ReplicaSet, logger zerolog.Logger) *ReplicationAnalysis 
 					Str("ReplicaSet", string(set.UUID)).
 					Msgf("Found M-M replication ('%s'-'%s') in ReplicaSet", set.MasterUUID, r.UUID)
 			}
+
+			if r.VShardFingerprint != master.VShardFingerprint {
+				countInconsistentVShardConf++
+			}
 		}
 	}
 
-	master, err := set.Master()
-	if err != nil {
-		// Something really weird but we have data inconsistency here.
-		// Master UUID not found in ReplicaSet.
-		logger.Error().Msgf("Failed to analyze replicaset state: master UUID '%s' not found", set.MasterUUID)
-		return nil
-	}
-	isMasterDead := !master.LastCheckValid
+	isMasterDead := !master.LastCheckValid // relative to qumomf
 
 	state := NoProblem
 	if isMasterDead && countWorkingReplicas == countReplicas && countReplicatingReplicas == 0 {
@@ -123,14 +129,17 @@ func analyze(set vshard.ReplicaSet, logger zerolog.Logger) *ReplicationAnalysis 
 		state = NetworkProblems
 	} else if !isMasterDead && countReplicas > 0 && countReplicatingReplicas == 0 {
 		state = AllMasterFollowersNotReplicating
+	} else if countInconsistentVShardConf > 0 {
+		state = InconsistentVShardConfiguration
 	}
 
 	return &ReplicationAnalysis{
-		Set:                      set,
-		CountReplicas:            countReplicas,
-		CountWorkingReplicas:     countWorkingReplicas,
-		CountReplicatingReplicas: countReplicatingReplicas,
-		State:                    state,
+		Set:                         set,
+		CountReplicas:               countReplicas,
+		CountWorkingReplicas:        countWorkingReplicas,
+		CountReplicatingReplicas:    countReplicatingReplicas,
+		CountInconsistentVShardConf: countInconsistentVShardConf,
+		State:                       state,
 	}
 }
 
