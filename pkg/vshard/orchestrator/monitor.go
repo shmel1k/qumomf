@@ -23,8 +23,10 @@ func NewMonitor(cluster *vshard.Cluster, cfg Config, logger zerolog.Logger) Moni
 }
 
 type storageMonitor struct {
-	config  Config
-	cluster *vshard.Cluster
+	config Config
+
+	cluster  *vshard.Cluster
+	analyzed int64 // identifier of the last analyzed cluster topology
 
 	stop   chan struct{}
 	logger zerolog.Logger
@@ -59,19 +61,31 @@ func (m *storageMonitor) continuousDiscovery(stream AnalysisWriteStream) {
 		case <-recoveryTick.C:
 			// NOTE: we might improve this place checking the delay only on start.
 			if runCheckAndRecoverOperationsTimeRipe() {
-				for _, set := range m.cluster.ReplicaSets() {
-					go func(set vshard.ReplicaSet) {
-						analysis := analyze(set, m.logger)
-						if analysis != nil {
-							stream <- analysis
-						}
-					}(set)
-				}
+				m.checkCluster(stream)
 			} else {
 				m.logger.Info().Msgf("Waiting for %+v seconds to pass before running failure detection/recovery", checkAndRecoverWaitPeriod.Seconds())
 			}
 		}
 	}
+}
+
+func (m *storageMonitor) checkCluster(stream AnalysisWriteStream) {
+	discovered := m.cluster.LastDiscovered()
+	if discovered <= m.analyzed {
+		// Prevent too much analyzes of the same cluster topology.
+		return
+	}
+
+	for _, set := range m.cluster.ReplicaSets() {
+		go func(set vshard.ReplicaSet) {
+			analysis := analyze(set, m.logger)
+			if analysis != nil {
+				stream <- analysis
+			}
+		}(set)
+	}
+
+	m.analyzed = discovered
 }
 
 func analyze(set vshard.ReplicaSet, logger zerolog.Logger) *ReplicationAnalysis { //nolint: gocyclo
