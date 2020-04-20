@@ -179,6 +179,25 @@ func Test_storageMonitor_analyze(t *testing.T) {
 				State:                    NetworkProblems,
 			},
 		},
+		{
+			name: "InconsistentVShardConfiguration",
+			set: vshard.ReplicaSet{
+				UUID:       "set_1",
+				MasterUUID: "replica_1",
+				Instances: []vshard.Instance{
+					mockInstance(1, true, vshard.StatusMaster),
+					mockInstance(2, true, vshard.StatusFollow),
+					mockInvalidVShardConf(mockInstance(3, true, vshard.StatusFollow)),
+				},
+			},
+			want: &ReplicationAnalysis{
+				CountReplicas:               2,
+				CountWorkingReplicas:        2,
+				CountReplicatingReplicas:    2,
+				CountInconsistentVShardConf: 1,
+				State:                       InconsistentVShardConfiguration,
+			},
+		},
 	}
 
 	for _, tv := range tests {
@@ -205,4 +224,9 @@ func mockInstance(id int, valid bool, status vshard.ReplicationStatus) vshard.In
 			},
 		},
 	}
+}
+
+func mockInvalidVShardConf(inst vshard.Instance) vshard.Instance {
+	inst.VShardFingerprint = 1000
+	return inst
 }

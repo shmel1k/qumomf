@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -63,30 +64,32 @@ type Failover interface {
 	Shutdown()
 }
 
-type promoteFailover struct {
+type failover struct {
 	cluster *vshard.Cluster
 	elector quorum.Quorum
 
-	blockers    []*BlockedRecovery
-	blockerSync sync.RWMutex
-	blockerTTL  time.Duration
+	recoveries      []Recovery
+	recvSync        sync.RWMutex
+	recvSetTTL      time.Duration
+	recvInstanceTTL time.Duration
 
 	stop   chan struct{}
 	logger zerolog.Logger
 }
 
-func NewPromoteFailover(cluster *vshard.Cluster, cfg FailoverConfig, logger zerolog.Logger) Failover {
-	return &promoteFailover{
-		cluster:    cluster,
-		elector:    cfg.Elector,
-		blockers:   make([]*BlockedRecovery, 0),
-		blockerTTL: cfg.ReplicaSetRecoveryBlockTime,
-		stop:       make(chan struct{}, 1),
-		logger:     logger,
+func NewDefaultFailover(cluster *vshard.Cluster, cfg FailoverConfig, logger zerolog.Logger) Failover {
+	return &failover{
+		cluster:         cluster,
+		elector:         cfg.Elector,
+		recoveries:      make([]Recovery, 0),
+		recvSetTTL:      cfg.ReplicaSetRecoveryBlockTime,
+		recvInstanceTTL: cfg.InstanceRecoveryBlockTime,
+		stop:            make(chan struct{}, 1),
+		logger:          logger,
 	}
 }
 
-func (f *promoteFailover) Serve(stream AnalysisReadStream) {
+func (f *failover) Serve(stream AnalysisReadStream) {
 	ctx := context.Background()
 
 	cleanupTick := time.NewTicker(cleanupPeriod)
@@ -108,11 +111,11 @@ func (f *promoteFailover) Serve(stream AnalysisReadStream) {
 	}()
 }
 
-func (f *promoteFailover) Shutdown() {
+func (f *failover) Shutdown() {
 	f.stop <- struct{}{}
 }
 
-func (f *promoteFailover) shouldBeAnalysisChecked() bool {
+func (f *failover) shouldBeAnalysisChecked() bool {
 	if f.cluster.ReadOnly() {
 		f.logger.Info().Msgf("Readonly cluster: skip check and recovery step for all shards")
 		return false
@@ -124,56 +127,66 @@ func (f *promoteFailover) shouldBeAnalysisChecked() bool {
 	return true
 }
 
-func (f *promoteFailover) checkAndRecover(ctx context.Context, analysis *ReplicationAnalysis) {
+func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAnalysis) {
 	f.logger.Info().Msgf("checkAndRecover: %s", *analysis)
-	set := analysis.Set
 
-	switch analysis.State {
+	recvFunc, desc := f.getCheckAndRecoveryFunc(analysis.State)
+	if recvFunc == nil {
+		return
+	}
+
+	f.cluster.StartRecovery()
+	f.logger.Info().Msg(desc)
+	recoveries := recvFunc(ctx, analysis)
+	for _, recv := range recoveries {
+		f.registryRecovery(recv)
+		f.logger.Info().Msgf("Finished recovery: %s", recv)
+	}
+	if len(recoveries) > 0 {
+		f.logger.Info().Msgf("Run a force discovery after applied recoveries on ReplicaSet '%s'", analysis.Set.UUID)
+		f.cluster.Discover()
+	}
+	f.cluster.StopRecovery()
+}
+
+func (f *failover) getCheckAndRecoveryFunc(state ReplicaSetState) (rf RecoveryFunc, desc string) {
+	switch state {
 	case NoProblem:
 		// Nothing to do, everything is OK.
 	case DeadMaster:
-		f.cluster.StartRecovery()
-		f.logger.Info().Msgf("Master cannot be reached by qumomf. Will run failover. ReplicaSet snapshot: %s", set)
-		recv := f.promoteFollowerToMaster(ctx, analysis)
-		if recv != nil {
-			f.registryRecovery(recv)
-			f.logger.Info().Msgf("Finished recovery: %s", *recv)
-			f.logger.Info().Msgf("Run a force discovery after the recovery on ReplicaSet '%s'", set.UUID)
-			f.cluster.Discover()
-		}
-		f.cluster.StopRecovery()
+		rf = f.promoteFollowerToMaster
+		desc = "Master cannot be reached by qumomf. Will run failover."
 	case DeadMasterAndSomeFollowers:
-		f.cluster.StartRecovery()
-		f.logger.Info().Msgf("Master cannot be reached by qumomf and some of its followers are unreachable. Will run failover. ReplicaSet snapshot: %s", set)
-		recv := f.promoteFollowerToMaster(ctx, analysis)
-		if recv != nil {
-			f.registryRecovery(recv)
-			f.logger.Info().Msgf("Recovery status: %s", *recv)
-			f.logger.Info().Msgf("Run a force discovery after the recovery on ReplicaSet '%s'", set.UUID)
-			f.cluster.Discover()
-		}
-		f.cluster.StopRecovery()
+		rf = f.promoteFollowerToMaster
+		desc = "Master cannot be reached by qumomf and some of its followers are unreachable. Will run failover."
 	case DeadMasterAndFollowers:
-		f.logger.Info().Msgf("Master cannot be reached by qumomf and none of its followers is replicating. No actions will be applied. ReplicaSet snapshot: %s", set)
+		desc = "Master cannot be reached by qumomf and none of its followers is replicating. No actions will be applied."
 	case AllMasterFollowersNotReplicating:
-		f.logger.Info().Msgf("Master is reachable but none of its replicas is replicating. No actions will be applied. ReplicaSet snapshot: %s", set)
+		desc = "Master is reachable but none of its replicas is replicating. No actions will be applied."
 	case DeadMasterWithoutFollowers:
-		f.logger.Info().Msgf("Master cannot be reached by qumomf and has no followers. No actions will be applied. ReplicaSet snapshot: %s", set)
+		desc = "Master cannot be reached by qumomf and has no followers. No actions will be applied."
 	case NetworkProblems:
-		f.logger.Info().Msgf("Master cannot be reached by qumomf but some followers are still replicating. It might be a network problem, no actions will be applied. ReplicaSet snapshot: %s", set)
+		desc = "Master cannot be reached by qumomf but some followers are still replicating. It might be a network problem, no actions will be applied."
+	case InconsistentVShardConfiguration:
+		rf = f.wishEventualConsistency
+		desc = "Found replicas with inconsistent vshard topology. Will sync master configuration on that replicas."
+	default:
+		panic(fmt.Sprintf("Unknown analysis state: %s", state))
 	}
+
+	return
 }
 
-func (f *promoteFailover) promoteFollowerToMaster(ctx context.Context, analysis *ReplicationAnalysis) *Recovery {
+func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *ReplicationAnalysis) []Recovery {
 	badSet := analysis.Set
 	logger := f.logger.With().Str("ReplicaSet", string(badSet.UUID)).Logger()
 
-	if f.hasBlockedRecovery(badSet.UUID) {
+	if f.hasBlockedRecovery(string(badSet.UUID)) {
 		logger.Warn().Msg("ReplicaSet has been recovered recently so new failover is blocked")
 		return nil
 	}
 
-	recv := NewRecovery(analysis)
+	recv := NewSetRecovery(analysis, f.recvSetTTL)
 	defer func() {
 		recv.EndTimestamp = util.Timestamp()
 	}()
@@ -181,7 +194,7 @@ func (f *promoteFailover) promoteFollowerToMaster(ctx context.Context, analysis 
 	candidateUUID, err := f.elector.ChooseMaster(badSet)
 	if err != nil {
 		logger.Err(err).Msg("Failed to elect a new master")
-		return recv
+		return []Recovery{recv}
 	}
 	recv.SuccessorUUID = candidateUUID
 
@@ -198,7 +211,7 @@ func (f *promoteFailover) promoteFollowerToMaster(ctx context.Context, analysis 
 		logger.Info().Msgf("Configuration of the chosen master '%s' was updated", candidateUUID)
 	} else {
 		logger.Err(resp.Error).Msgf("Recovery fatal error: failed to update the configuration of the chosen master '%s'", candidateUUID)
-		return recv
+		return []Recovery{recv}
 	}
 
 	// Update routers configuration to accept write requests as quickly as possible.
@@ -235,23 +248,60 @@ func (f *promoteFailover) promoteFollowerToMaster(ctx context.Context, analysis 
 	}
 
 	recv.IsSuccessful = true
-	return recv
+	return []Recovery{recv}
 }
 
-func (f *promoteFailover) registryRecovery(r *Recovery) {
-	blocker := NewBlockedRecovery(r, f.blockerTTL)
+func (f *failover) wishEventualConsistency(ctx context.Context, analysis *ReplicationAnalysis) []Recovery {
+	badSet := &analysis.Set
+	logger := f.logger.With().Str("ReplicaSet", string(badSet.UUID)).Logger()
 
-	f.blockerSync.Lock()
-	f.blockers = append(f.blockers, blocker)
-	f.blockerSync.Unlock()
+	recvQuery := buildRecoveryQuery(badSet.UUID, badSet.MasterUUID)
+
+	master, _ := badSet.Master()
+	followers := badSet.Followers()
+	recoveries := make([]Recovery, 0)
+	for i := range followers {
+		inst := &followers[i]
+
+		if inst.VShardFingerprint == master.VShardFingerprint {
+			continue
+		}
+
+		if f.hasBlockedRecovery(string(inst.UUID)) {
+			logger.Warn().Msgf("Instance '%s' has been recovered recently so new failover is blocked", inst.UUID)
+			continue
+		}
+
+		recv := NewInstanceRecovery(inst.UUID, string(analysis.State), f.recvInstanceTTL)
+
+		conn := f.cluster.Connector(inst.URI)
+		resp := conn.Exec(ctx, recvQuery)
+		if resp.Error == nil {
+			logger.Info().Msgf("Configuration was updated on node '%s'", inst.UUID)
+			recv.IsSuccessful = true
+		} else {
+			logger.Err(resp.Error).Msgf("Failed to update configuration on node '%s'", inst.UUID)
+		}
+
+		recv.EndTimestamp = util.Timestamp()
+		recoveries = append(recoveries, recv)
+	}
+
+	return recoveries
 }
 
-func (f *promoteFailover) hasBlockedRecovery(uuid vshard.ReplicaSetUUID) bool {
-	f.blockerSync.RLock()
-	defer f.blockerSync.RUnlock()
+func (f *failover) registryRecovery(r Recovery) {
+	f.recvSync.Lock()
+	f.recoveries = append(f.recoveries, r)
+	f.recvSync.Unlock()
+}
 
-	for _, b := range f.blockers {
-		if b.Recovery.SetUUID == uuid && !b.Expired() {
+func (f *failover) hasBlockedRecovery(key string) bool {
+	f.recvSync.RLock()
+	defer f.recvSync.RUnlock()
+
+	for _, b := range f.recoveries {
+		if b.LockKey() == key && !b.Expired() {
 			return true
 		}
 	}
@@ -259,29 +309,29 @@ func (f *promoteFailover) hasBlockedRecovery(uuid vshard.ReplicaSetUUID) bool {
 	return false
 }
 
-func (f *promoteFailover) cleanup(force bool) {
+func (f *failover) cleanup(force bool) {
 	// It is not a frequent operation, so do not
 	// see any reason to optimize this place.
 
-	f.blockerSync.RLock()
-	if len(f.blockers) == 0 {
-		f.blockerSync.RUnlock()
+	f.recvSync.RLock()
+	if len(f.recoveries) == 0 {
+		f.recvSync.RUnlock()
 		return
 	}
 
-	alive := make([]*BlockedRecovery, 0)
+	alive := make([]Recovery, 0)
 	if !force {
-		for _, b := range f.blockers {
+		for _, b := range f.recoveries {
 			if !b.Expired() {
 				alive = append(alive, b)
 			}
 		}
 	}
-	f.blockerSync.RUnlock()
+	f.recvSync.RUnlock()
 
-	f.blockerSync.Lock()
-	f.blockers = alive
-	f.blockerSync.Unlock()
+	f.recvSync.Lock()
+	f.recoveries = alive
+	f.recvSync.Unlock()
 }
 
 func buildRecoveryQuery(set vshard.ReplicaSetUUID, candidate vshard.InstanceUUID) tarantool.Query {

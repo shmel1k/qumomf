@@ -34,7 +34,7 @@ func (s *failoverTestSuite) AfterTest(_, _ string) {
 	}
 }
 
-func (s *failoverTestSuite) Test_promoteFailover_promoteFollowerToMaster() {
+func (s *failoverTestSuite) Test_failover_promoteFollowerToMaster() {
 	t := s.T()
 
 	if testing.Short() {
@@ -47,11 +47,11 @@ func (s *failoverTestSuite) Test_promoteFailover_promoteFollowerToMaster() {
 	elector := quorum.NewLagQuorum()
 	logger := zerolog.New(zerolog.NewConsoleWriter())
 
-	s.failover = NewPromoteFailover(s.cluster, FailoverConfig{
+	s.failover = NewDefaultFailover(s.cluster, FailoverConfig{
 		Elector:                     elector,
 		ReplicaSetRecoveryBlockTime: 2 * time.Second,
 	}, logger)
-	fv := s.failover.(*promoteFailover)
+	fv := s.failover.(*failover)
 
 	stream := NewAnalysisStream()
 	fv.Serve(stream)
@@ -69,15 +69,16 @@ func (s *failoverTestSuite) Test_promoteFailover_promoteFollowerToMaster() {
 	stream <- analysis
 
 	require.Eventually(t, func() bool {
-		return fv.hasBlockedRecovery(set.UUID)
+		return fv.hasBlockedRecovery(string(set.UUID))
 	}, 5*time.Second, 100*time.Millisecond)
-	require.Len(t, fv.blockers, 1)
-	recv := fv.blockers[0].Recovery
+	require.Len(t, fv.recoveries, 1)
+	recv, ok := fv.recoveries[0].(*SetRecovery)
+	require.True(t, ok)
 
 	require.True(t, recv.IsSuccessful)
 	assert.InDelta(t, util.Timestamp(), recv.StartTimestamp, 5)
 	assert.InDelta(t, util.Timestamp(), recv.EndTimestamp, 2)
-	assert.Equal(t, string(analysis.State), recv.Type)
+	assert.Equal(t, string(analysis.State), recv.Reason())
 	assert.Equal(t, set.MasterUUID, recv.FailedUUID)
 
 	recvSet, err := s.cluster.ReplicaSet("7432f072-c00b-4498-b1a6-6d9547a8a150")
@@ -99,24 +100,84 @@ func (s *failoverTestSuite) Test_promoteFailover_promoteFollowerToMaster() {
 	analysis.Set = recvSet
 	stream <- analysis
 
-	require.Len(t, fv.blockers, 1)
-	assert.Same(t, recv, fv.blockers[0].Recovery)
+	require.Len(t, fv.recoveries, 1)
+	assert.Same(t, recv, fv.recoveries[0])
 
 	// Recreate the initial cluster.
 	fv.cleanup(true)
-	require.False(t, fv.hasBlockedRecovery(set.UUID))
+	require.False(t, fv.hasBlockedRecovery(string(set.UUID)))
 
 	stream <- analysis
 
 	require.Eventually(t, func() bool {
-		return fv.hasBlockedRecovery(set.UUID)
+		return fv.hasBlockedRecovery(string(set.UUID))
 	}, 5*time.Second, 100*time.Millisecond)
-	require.Len(t, fv.blockers, 1)
-	assert.True(t, recv != fv.blockers[0].Recovery)
+	require.Len(t, fv.recoveries, 1)
+	assert.True(t, recv != fv.recoveries[0])
 
-	recv = fv.blockers[0].Recovery
+	recv, ok = fv.recoveries[0].(*SetRecovery)
+	require.True(t, ok)
 	assert.True(t, recv.IsSuccessful)
 	assert.Equal(t, set.MasterUUID, recv.SuccessorUUID)
+}
+
+func (s *failoverTestSuite) Test_failover_wishEventualConsistency() {
+	t := s.T()
+
+	if testing.Short() {
+		t.Skip("test requires dev env - skipping it in short mode.")
+	}
+
+	s.cluster.Discover()
+	require.InDelta(t, util.Timestamp(), s.cluster.LastDiscovered(), 1)
+
+	elector := quorum.NewLagQuorum()
+	logger := zerolog.New(zerolog.NewConsoleWriter())
+
+	s.failover = NewDefaultFailover(s.cluster, FailoverConfig{
+		Elector:                     elector,
+		ReplicaSetRecoveryBlockTime: 2 * time.Second,
+		InstanceRecoveryBlockTime:   2 * time.Second,
+	}, logger)
+	fv := s.failover.(*failover)
+
+	stream := NewAnalysisStream()
+	fv.Serve(stream)
+
+	set, err := s.cluster.ReplicaSet("7432f072-c00b-4498-b1a6-6d9547a8a150")
+	require.Nil(t, err)
+
+	invalidUUID := "cd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1"
+
+	for i := range set.Instances {
+		inst := &set.Instances[i]
+		if inst.UUID == vshard.InstanceUUID(invalidUUID) {
+			inst.VShardFingerprint = 100
+			break
+		}
+	}
+
+	analysis := &ReplicationAnalysis{
+		Set:                         set,
+		CountReplicas:               1,
+		CountWorkingReplicas:        1,
+		CountReplicatingReplicas:    1,
+		CountInconsistentVShardConf: 1,
+		State:                       InconsistentVShardConfiguration,
+	}
+	stream <- analysis
+
+	require.Eventually(t, func() bool {
+		return fv.hasBlockedRecovery(invalidUUID)
+	}, 5*time.Second, 100*time.Millisecond)
+	require.Len(t, fv.recoveries, 1)
+	recv, ok := fv.recoveries[0].(*InstanceRecovery)
+	require.True(t, ok)
+
+	assert.True(t, recv.IsSuccessful)
+	assert.Equal(t, string(analysis.State), recv.Reason())
+	assert.Equal(t, invalidUUID, recv.LockKey())
+	assert.False(t, recv.Expired())
 }
 
 func TestFailover(t *testing.T) {

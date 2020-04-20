@@ -37,9 +37,13 @@ var (
 	}
 	vshardInstanceInfoQuery = &tarantool.Eval{
 		Expression: `
+			digest = require('digest')
+			json = require('json')
+
 			local data = {}
 			data.storage = vshard.storage.info()
 			data.read_only = box.cfg.read_only
+			data.vshard_fingerprint = digest.crc32(json.encode(vshard.storage.internal.current_cfg.sharding))
 			return data
 		`,
 	}
@@ -369,6 +373,7 @@ func (c *Cluster) discoverInstance(ctx context.Context, inst *Instance) {
 
 	inst.Readonly = info.Readonly
 	inst.StorageInfo = info.StorageInfo
+	inst.VShardFingerprint = info.VShardFingerprint
 	inst.LastCheckValid = true
 }
 

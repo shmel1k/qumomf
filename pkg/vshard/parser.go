@@ -33,6 +33,17 @@ func (c container) getInt64(key string) (int64, error) {
 	}
 }
 
+func (c container) getUInt64(key string) (uint64, error) {
+	switch t := c[key].(type) {
+	case int64:
+		return uint64(t), nil
+	case uint64:
+		return t, nil
+	default:
+		return 0, fmt.Errorf("field '%s' (%T) is not found or has unexpected type in container: %v", key, c[key], c)
+	}
+}
+
 func (c container) getFloat64(key string) (float64, error) {
 	switch t := c[key].(type) {
 	case float64:
@@ -232,14 +243,20 @@ func ParseInstanceInfo(data [][]interface{}) (InstanceInfo, error) {
 		return InstanceInfo{}, err
 	}
 
+	fingerprint, err := dt.getUInt64("vshard_fingerprint")
+	if err != nil {
+		return InstanceInfo{}, err
+	}
+
 	storageInfo, err := parseStorageInfo(dt)
 	if err != nil {
 		return InstanceInfo{}, err
 	}
 
 	return InstanceInfo{
-		Readonly:    readonly,
-		StorageInfo: storageInfo,
+		Readonly:          readonly,
+		VShardFingerprint: fingerprint,
+		StorageInfo:       storageInfo,
 	}, nil
 }
 
