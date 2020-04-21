@@ -51,7 +51,7 @@ func TestReplicaSet_Followers(t *testing.T) {
 	for _, tv := range tests {
 		tt := tv
 		t.Run(tt.name, func(t *testing.T) {
-			set := &ReplicaSet{
+			set := ReplicaSet{
 				UUID:       tt.fields.UUID,
 				MasterUUID: tt.fields.MasterUUID,
 				Instances:  tt.fields.Instances,

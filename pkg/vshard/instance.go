@@ -1,9 +1,13 @@
 package vshard
 
 type InstanceUUID string
+
 type ReplicationStatus string
 type UpstreamStatus string
 type DownstreamStatus string
+
+type HealthCode int
+type HealthLevel string
 
 const (
 	StatusFollow       ReplicationStatus = "follow"
@@ -25,6 +29,26 @@ const (
 const (
 	DownstreamFollow  DownstreamStatus = "follow"  // the downstream replication is in progress.
 	DownstreamStopped DownstreamStatus = "stopped" // the downstream replication has stopped.
+)
+
+const (
+	// A replica set works in a regular way.
+	HealthCodeGreen HealthCode = 0
+	// There are some issues, but they don’t affect a replica set efficiency
+	// (worth noticing, but don’t require immediate intervention).
+	HealthCodeYellow HealthCode = 1
+	// A replica set is in a degraded state.
+	HealthCodeOrange HealthCode = 2
+	// A replica set is disabled.
+	HealthCodeRed HealthCode = 3
+)
+
+const (
+	HealthLevelGreen   HealthLevel = "green"
+	HealthLevelYellow  HealthLevel = "yellow"
+	HealthLevelOrange  HealthLevel = "orange"
+	HealthLevelRed     HealthLevel = "red"
+	HealthLevelUnknown HealthLevel = "unknown" // if something will change
 )
 
 type Instance struct {
@@ -81,7 +105,7 @@ type Downstream struct {
 	Status DownstreamStatus `json:"status"`
 }
 
-func (i *Instance) HasAlert(t AlertType) bool {
+func (i Instance) HasAlert(t AlertType) bool {
 	for _, a := range i.StorageInfo.Alerts {
 		if a.Type == t {
 			return true
@@ -89,6 +113,21 @@ func (i *Instance) HasAlert(t AlertType) bool {
 	}
 
 	return false
+}
+
+func (i Instance) CriticalLevel() HealthLevel {
+	switch i.StorageInfo.Status {
+	case HealthCodeGreen:
+		return HealthLevelGreen
+	case HealthCodeYellow:
+		return HealthLevelYellow
+	case HealthCodeOrange:
+		return HealthLevelOrange
+	case HealthCodeRed:
+		return HealthLevelRed
+	}
+
+	return HealthLevelUnknown
 }
 
 // InstanceInfo is a helper structure contains
@@ -100,6 +139,9 @@ type InstanceInfo struct {
 }
 
 type StorageInfo struct {
+	// Status indicates current state of the ReplicaSet.
+	// It ranges from 0 (green) up to 3 (red).
+	Status      HealthCode     `json:"status"`
 	Replication Replication    `json:"replication"`
 	Bucket      InstanceBucket `json:"bucket"`
 	Alerts      []Alert        `json:"alerts"`

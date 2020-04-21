@@ -1,8 +1,9 @@
 package vshard
 
 import (
-	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 type ReplicaSetUUID string
@@ -19,12 +20,16 @@ type ReplicaSet struct {
 	Instances []Instance `json:"instances"`
 }
 
-func (set ReplicaSet) String() string {
-	j, _ := json.Marshal(set)
-	return string(j)
+func (set ReplicaSet) CriticalLevel() HealthLevel {
+	master, err := set.Master()
+	if err != nil {
+		return HealthLevelUnknown
+	}
+
+	return master.CriticalLevel()
 }
 
-func (set *ReplicaSet) Followers() []Instance {
+func (set ReplicaSet) Followers() []Instance {
 	if len(set.Instances) == 0 {
 		return []Instance{}
 	}
@@ -39,7 +44,7 @@ func (set *ReplicaSet) Followers() []Instance {
 	return followers
 }
 
-func (set *ReplicaSet) AliveFollowers() []Instance {
+func (set ReplicaSet) AliveFollowers() []Instance {
 	if len(set.Instances) == 0 {
 		return []Instance{}
 	}
@@ -71,12 +76,55 @@ func (set *ReplicaSet) AliveFollowers() []Instance {
 	return followers
 }
 
-func (set *ReplicaSet) Master() (Instance, error) {
-	for _, inst := range set.Instances { //nolint:gocritic
+func (set ReplicaSet) Master() (Instance, error) {
+	for i := range set.Instances {
+		inst := &set.Instances[i]
 		if inst.UUID == set.MasterUUID {
-			return inst, nil
+			return *inst, nil
 		}
 	}
 
 	return Instance{}, fmt.Errorf("replica set `%s` has invalid topology snapshot: master `%s` not found", set.UUID, set.MasterUUID)
+}
+
+func (set ReplicaSet) String() string {
+	// Minimal style, only important info.
+	var sb strings.Builder
+	sb.WriteString("id: ")
+	sb.WriteString(string(set.UUID))
+	sb.WriteString("; lead: ")
+	sb.WriteString(string(set.MasterUUID))
+	sb.WriteString("; size: ")
+	sb.WriteString(strconv.Itoa(len(set.Instances)))
+	sb.WriteString("; health: ")
+	cl := set.CriticalLevel()
+	sb.WriteString(string(cl))
+
+	if cl == HealthLevelGreen {
+		return sb.String()
+	}
+
+	sb.WriteString("; alerts: [")
+	prettyList := false
+	for i := range set.Instances {
+		inst := &set.Instances[i]
+		alerts := inst.StorageInfo.Alerts
+		if len(alerts) > 0 {
+			if prettyList {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(string(inst.UUID))
+			sb.WriteString(" -> ")
+			for j, alert := range alerts {
+				sb.WriteString(alert.String())
+				if j != len(alerts)-1 {
+					sb.WriteString(", ")
+				}
+			}
+			prettyList = true
+		}
+	}
+	sb.WriteString("]")
+
+	return sb.String()
 }
