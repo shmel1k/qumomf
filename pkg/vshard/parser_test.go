@@ -142,6 +142,8 @@ func TestParseInstanceInfo(t *testing.T) {
 	assert.Equal(t, uint64(1867192003), data.VShardFingerprint)
 
 	storage := &data.StorageInfo
+	assert.Equal(t, HealthCodeGreen, storage.Status)
+
 	replication := &storage.Replication
 	assert.Equal(t, StatusFollow, replication.Status)
 	assert.InDelta(t, float64(0), replication.Delay, float64(1))

@@ -37,7 +37,7 @@ type ReplicationAnalysis struct {
 
 func (a ReplicationAnalysis) String() string {
 	return fmt.Sprintf(
-		"ReplicaSet '%s' analysis: [State: %s; CountReplicas: %d; CountWorkingReplicas: %d; CountReplicatingReplicas: %d]",
-		a.Set.UUID, a.State, a.CountReplicas, a.CountWorkingReplicas, a.CountReplicatingReplicas,
+		"[State: %s; CountReplicas: %d; CountWorkingReplicas: %d; CountReplicatingReplicas: %d]",
+		a.State, a.CountReplicas, a.CountWorkingReplicas, a.CountReplicatingReplicas,
 	)
 }

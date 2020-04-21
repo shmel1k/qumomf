@@ -2,6 +2,7 @@ package vshard
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"math/rand"
 	"sync"
@@ -100,6 +101,14 @@ func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
 
 func (c *Cluster) SetLogger(logger zerolog.Logger) {
 	c.logger = logger
+}
+
+func (c *Cluster) Dump() string {
+	c.mutex.RLock()
+	j, _ := json.Marshal(c.snapshot)
+	c.mutex.RUnlock()
+
+	return string(j)
 }
 
 func (c *Cluster) Connector(uri string) *Connector {
@@ -302,9 +311,8 @@ func (c *Cluster) Discover() {
 	}
 	for set := range discovered {
 		ns.ReplicaSets = append(ns.ReplicaSets, set)
+		c.logger.Debug().Msgf("Discovered: %s", set.String())
 	}
-
-	c.logger.Debug().Msgf("Snapshot of the cluster has been created: %s", ns)
 
 	c.mutex.Lock()
 	if c.snapshot.Created <= ns.Created {

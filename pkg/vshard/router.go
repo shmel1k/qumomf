@@ -1,7 +1,5 @@
 package vshard
 
-import "encoding/json"
-
 type RouterUUID string
 type InstanceStatus string
 
@@ -15,11 +13,6 @@ type Router struct {
 	URI  string     `json:"uri"`
 	UUID RouterUUID `json:"uuid"`
 	Info RouterInfo `json:"info"`
-}
-
-func (r Router) String() string {
-	j, _ := json.Marshal(r)
-	return string(j)
 }
 
 func NewRouter(uri string, uuid RouterUUID) Router {

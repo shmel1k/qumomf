@@ -128,7 +128,8 @@ func (f *failover) shouldBeAnalysisChecked() bool {
 }
 
 func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAnalysis) {
-	f.logger.Info().Msgf("checkAndRecover: %s", *analysis)
+	logger := f.logger.With().Str("ReplicaSet", string(analysis.Set.UUID)).Logger()
+	logger.Info().Msgf("checkAndRecover: %s", analysis.String())
 
 	recvFunc, desc := f.getCheckAndRecoveryFunc(analysis.State)
 	if recvFunc == nil {
@@ -136,15 +137,17 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 	}
 
 	f.cluster.StartRecovery()
-	f.logger.Info().Msg(desc)
+	logger.Warn().Msg(desc)
+	logger.Info().Msgf("Cluster snapshot before recovery: %s", f.cluster.Dump())
 	recoveries := recvFunc(ctx, analysis)
 	for _, recv := range recoveries {
 		f.registryRecovery(recv)
-		f.logger.Info().Msgf("Finished recovery: %s", recv)
+		logger.Info().Msgf("Finished recovery: %s", recv)
 	}
 	if len(recoveries) > 0 {
-		f.logger.Info().Msgf("Run a force discovery after applied recoveries on ReplicaSet '%s'", analysis.Set.UUID)
+		logger.Info().Msg("Run a force discovery after applied recoveries")
 		f.cluster.Discover()
+		logger.Info().Msgf("Cluster snapshot after recovery: %s", f.cluster.Dump())
 	}
 	f.cluster.StopRecovery()
 }

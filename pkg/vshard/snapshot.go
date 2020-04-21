@@ -1,17 +1,10 @@
 package vshard
 
-import "encoding/json"
-
 // Snapshot is a copy of the cluster topology in given time.
 type Snapshot struct {
 	Created     int64        `json:"created"`
 	Routers     []Router     `json:"routers"`
 	ReplicaSets []ReplicaSet `json:"replica_sets"`
-}
-
-func (s Snapshot) String() string {
-	j, _ := json.Marshal(s)
-	return string(j)
 }
 
 func (s *Snapshot) Copy() Snapshot {
