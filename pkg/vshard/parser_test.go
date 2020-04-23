@@ -38,7 +38,7 @@ func TestParseRouterInfo(t *testing.T) {
 
 	b := RouterBucket{
 		AvailableRO: 0,
-		AvailableRW: 100,
+		AvailableRW: 120,
 		Unknown:     0,
 		Unreachable: 0,
 	}
@@ -46,13 +46,13 @@ func TestParseRouterInfo(t *testing.T) {
 
 	expected := RouterReplicaSetParameters{
 		"7432f072-c00b-4498-b1a6-6d9547a8a150": RouterInstanceParameters{
-			UUID:           "294e7310-13f0-4690-b136-169599e87ba0",
+			UUID:           "a94e7310-13f0-4690-b136-169599e87ba0",
 			Status:         InstanceAvailable,
 			URI:            "qumomf@qumomf_1_m.ddk:3301",
 			NetworkTimeout: 0.5,
 		},
 		"5065fb5f-5f40-498e-af79-43887ba3d1ec": RouterInstanceParameters{
-			UUID:           "f3ef657e-eb9a-4730-b420-7ea78d52797d",
+			UUID:           "a3ef657e-eb9a-4730-b420-7ea78d52797d",
 			Status:         InstanceAvailable,
 			URI:            "qumomf@qumomf_2_m.ddk:3301",
 			NetworkTimeout: 0.5,
@@ -98,14 +98,14 @@ func TestParseReplication(t *testing.T) {
 	assert.Len(t, data, 2)
 
 	master := data[0]
-	assert.Equal(t, InstanceUUID("294e7310-13f0-4690-b136-169599e87ba0"), master.UUID)
+	assert.Equal(t, InstanceUUID("a94e7310-13f0-4690-b136-169599e87ba0"), master.UUID)
 	assert.Equal(t, "", master.URI) // No upstream data for master, URI must be set manually
-	assert.Equal(t, int64(95), master.LSN)
+	assert.Equal(t, int64(105), master.LSN)
 	assert.Nil(t, master.Upstream)
 	assert.Nil(t, master.Downstream)
 
 	replica := data[1]
-	assert.Equal(t, InstanceUUID("cd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1"), replica.UUID)
+	assert.Equal(t, InstanceUUID("bd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1"), replica.UUID)
 	assert.Equal(t, "qumomf@qumomf_1_s.ddk:3301", replica.URI)
 	assert.Equal(t, int64(0), replica.LSN)
 	require.NotNil(t, replica.Upstream)
@@ -139,7 +139,7 @@ func TestParseInstanceInfo(t *testing.T) {
 	require.Nil(t, err)
 
 	assert.True(t, data.Readonly)
-	assert.Equal(t, uint64(1867192003), data.VShardFingerprint)
+	assert.Equal(t, uint64(1010165886), data.VShardFingerprint)
 
 	storage := &data.StorageInfo
 	assert.Equal(t, HealthCodeGreen, storage.Status)
@@ -151,12 +151,12 @@ func TestParseInstanceInfo(t *testing.T) {
 	assert.Empty(t, storage.Alerts)
 
 	b := InstanceBucket{
-		Active:    50,
+		Active:    60,
 		Garbage:   0,
 		Pinned:    0,
 		Receiving: 0,
 		Sending:   0,
-		Total:     50,
+		Total:     60,
 	}
 	assert.Equal(t, b, storage.Bucket)
 }

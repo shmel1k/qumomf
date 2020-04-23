@@ -45,7 +45,7 @@ func (s *failoverTestSuite) Test_failover_promoteFollowerToMaster() {
 	require.InDelta(t, util.Timestamp(), s.cluster.LastDiscovered(), 1)
 
 	elector := quorum.NewLagQuorum()
-	logger := zerolog.New(zerolog.NewConsoleWriter())
+	logger := zerolog.New(zerolog.NewConsoleWriter()).With().Timestamp().Logger()
 
 	s.failover = NewDefaultFailover(s.cluster, FailoverConfig{
 		Elector:                     elector,
@@ -147,7 +147,7 @@ func (s *failoverTestSuite) Test_failover_wishEventualConsistency() {
 	set, err := s.cluster.ReplicaSet("7432f072-c00b-4498-b1a6-6d9547a8a150")
 	require.Nil(t, err)
 
-	invalidUUID := "cd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1"
+	invalidUUID := "bd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1"
 
 	for i := range set.Instances {
 		inst := &set.Instances[i]

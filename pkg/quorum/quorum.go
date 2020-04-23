@@ -2,6 +2,7 @@ package quorum
 
 import (
 	"errors"
+	"math"
 
 	"github.com/shmel1k/qumomf/pkg/vshard"
 )
@@ -12,7 +13,7 @@ var (
 )
 
 const (
-	maxLag = float64(1000)
+	maxLag = math.MaxFloat64
 )
 
 type Quorum interface {

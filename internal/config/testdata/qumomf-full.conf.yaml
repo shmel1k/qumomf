@@ -23,10 +23,10 @@ clusters:
     routers:
       - name: 'sandbox1-router1'
         addr: '127.0.0.1:9301'
-        uuid: '294e7310-13f0-4690-b136-169599e87ba0'
+        uuid: 'a94e7310-13f0-4690-b136-169599e87ba0'
       - name: 'sandbox1-router2'
         addr: '127.0.0.1:9302'
-        uuid: 'f3ef657e-eb9a-4730-b420-7ea78d52797d'
+        uuid: 'a3ef657e-eb9a-4730-b420-7ea78d52797d'
 
   qumomf_sandbox_2:
     connection:
