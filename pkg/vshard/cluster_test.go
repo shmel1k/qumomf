@@ -50,17 +50,17 @@ func TestCluster_Discover(t *testing.T) {
 	expected := []tExpSet{
 		{
 			setUUID:    "7432f072-c00b-4498-b1a6-6d9547a8a150",
-			masterUUID: "294e7310-13f0-4690-b136-169599e87ba0",
+			masterUUID: "a94e7310-13f0-4690-b136-169599e87ba0",
 			instances: []tExpInst{
 				{
-					uuid:              "294e7310-13f0-4690-b136-169599e87ba0",
+					uuid:              "a94e7310-13f0-4690-b136-169599e87ba0",
 					uri:               "qumomf@qumomf_1_m.ddk:3301",
 					readonly:          false,
 					hasUpstream:       false,
 					replicationStatus: StatusMaster,
 				},
 				{
-					uuid:              "cd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1",
+					uuid:              "bd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1",
 					uri:               "qumomf@qumomf_1_s.ddk:3301",
 					readonly:          true,
 					hasUpstream:       true,
@@ -72,22 +72,31 @@ func TestCluster_Discover(t *testing.T) {
 		},
 		{
 			setUUID:    "5065fb5f-5f40-498e-af79-43887ba3d1ec",
-			masterUUID: "f3ef657e-eb9a-4730-b420-7ea78d52797d",
+			masterUUID: "a3ef657e-eb9a-4730-b420-7ea78d52797d",
 			instances: []tExpInst{
 				{
-					uuid:              "f3ef657e-eb9a-4730-b420-7ea78d52797d",
+					uuid:              "a3ef657e-eb9a-4730-b420-7ea78d52797d",
 					uri:               "qumomf@qumomf_2_m.ddk:3301",
 					readonly:          false,
 					hasUpstream:       false,
 					replicationStatus: StatusMaster,
 				},
 				{
-					uuid:              "7d64dd00-161e-4c99-8b3c-d3c4635e18d2",
-					uri:               "qumomf@qumomf_2_s.ddk:3301",
+					uuid:              "bd64dd00-161e-4c99-8b3c-d3c4635e18d2",
+					uri:               "qumomf@qumomf_2_s_1.ddk:3301",
 					readonly:          true,
 					hasUpstream:       true,
 					upstreamStatus:    UpstreamFollow,
-					upstreamPeer:      "qumomf@qumomf_2_s.ddk:3301",
+					upstreamPeer:      "qumomf@qumomf_2_s_1.ddk:3301",
+					replicationStatus: StatusFollow,
+				},
+				{
+					uuid:              "cc4cfb9c-11d8-4810-84d2-66cfbebb0f6e",
+					uri:               "qumomf@qumomf_2_s_2.ddk:3301",
+					readonly:          true,
+					hasUpstream:       true,
+					upstreamStatus:    UpstreamFollow,
+					upstreamPeer:      "qumomf@qumomf_2_s_2.ddk:3301",
 					replicationStatus: StatusFollow,
 				},
 			},
@@ -104,6 +113,11 @@ func TestCluster_Discover(t *testing.T) {
 
 		require.Len(t, set.Instances, len(exp.instances))
 
+		temp := set
+		sort.SliceStable(set.Instances, func(i, j int) bool { // predictable order
+			return temp.Instances[j].UUID > temp.Instances[i].UUID
+		})
+
 		for j, inst := range set.Instances {
 			expInst := exp.instances[j]
 
@@ -114,7 +128,7 @@ func TestCluster_Discover(t *testing.T) {
 
 			upstream := inst.Upstream
 			if expInst.hasUpstream {
-				assert.NotNil(t, upstream)
+				require.NotNil(t, upstream)
 				assert.Equal(t, expInst.upstreamStatus, upstream.Status)
 				assert.Equal(t, expInst.upstreamPeer, inst.Upstream.Peer)
 				assert.Empty(t, inst.Upstream.Message)

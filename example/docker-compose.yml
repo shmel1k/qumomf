@@ -12,7 +12,8 @@ services:
       - storage_1_m
       - storage_1_s
       - storage_2_m
-      - storage_2_s
+      - storage_2_s_1
+      - storage_2_s_2
 
   storage_1_m:
     build: './storage'
@@ -22,7 +23,7 @@ services:
     ports:
       - '9303:3301'
     environment:
-      - STORAGE_UUID=294e7310-13f0-4690-b136-169599e87ba0
+      - STORAGE_UUID=a94e7310-13f0-4690-b136-169599e87ba0
 
   storage_1_s:
     build: './storage'
@@ -34,7 +35,7 @@ services:
     ports:
       - '9304:3301'
     environment:
-      - STORAGE_UUID=cd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1
+      - STORAGE_UUID=bd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1
 
   storage_2_m:
     build: './storage'
@@ -44,11 +45,11 @@ services:
     ports:
       - '9305:3301'
     environment:
-      - STORAGE_UUID=f3ef657e-eb9a-4730-b420-7ea78d52797d
+      - STORAGE_UUID=a3ef657e-eb9a-4730-b420-7ea78d52797d
 
-  storage_2_s:
+  storage_2_s_1:
     build: './storage'
-    container_name: qumomf_2_s.ddk
+    container_name: qumomf_2_s_1.ddk
     networks:
       - qumomf
     ports:
@@ -56,7 +57,20 @@ services:
     depends_on:
       - storage_2_m
     environment:
-      - STORAGE_UUID=7d64dd00-161e-4c99-8b3c-d3c4635e18d2
+      - STORAGE_UUID=bd64dd00-161e-4c99-8b3c-d3c4635e18d2
+
+  storage_2_s_2:
+    build: './storage'
+    container_name: qumomf_2_s_2.ddk
+    networks:
+      - qumomf
+    ports:
+      - '9307:3301'
+    depends_on:
+      - storage_2_m
+    environment:
+#      - FAKETIME=-1m
+      - STORAGE_UUID=cc4cfb9c-11d8-4810-84d2-66cfbebb0f6e
 
 networks:
   qumomf:

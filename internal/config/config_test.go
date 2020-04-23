@@ -57,12 +57,12 @@ func TestSetup_ValidPath(t *testing.T) {
 				{
 					Name: "sandbox1-router1",
 					Addr: "127.0.0.1:9301",
-					UUID: "294e7310-13f0-4690-b136-169599e87ba0",
+					UUID: "a94e7310-13f0-4690-b136-169599e87ba0",
 				},
 				{
 					Name: "sandbox1-router2",
 					Addr: "127.0.0.1:9302",
-					UUID: "f3ef657e-eb9a-4730-b420-7ea78d52797d",
+					UUID: "a3ef657e-eb9a-4730-b420-7ea78d52797d",
 				},
 			},
 		},
