@@ -3,7 +3,7 @@ package util
 import "time"
 
 func Timestamp() int64 {
-	return time.Now().UTC().Unix()
+	return time.Now().Unix()
 }
 
 func NewBool(v bool) *bool {
