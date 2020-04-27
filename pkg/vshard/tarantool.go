@@ -58,6 +58,11 @@ func (p *pool) Get(uri string) *Connector {
 	}
 
 	p.mutex.Lock()
+	// double check
+	conn, ok = p.m[u]
+	if ok {
+		return conn
+	}
 	conn = setupConnection(u, p.template)
 	p.m[u] = conn
 	p.mutex.Unlock()
