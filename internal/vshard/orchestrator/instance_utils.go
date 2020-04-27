@@ -1,6 +1,6 @@
 package orchestrator
 
-import "github.com/shmel1k/qumomf/pkg/vshard"
+import "github.com/shmel1k/qumomf/internal/vshard"
 
 // InstanceFailoverSorter sorts instances by priority to update vshard configuration.
 type InstanceFailoverSorter struct {

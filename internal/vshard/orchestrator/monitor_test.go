@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/shmel1k/qumomf/pkg/vshard"
+	"github.com/shmel1k/qumomf/internal/vshard"
 )
 
 func Test_storageMonitor_analyze(t *testing.T) {

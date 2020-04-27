@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/shmel1k/qumomf/pkg/util"
+	"github.com/shmel1k/qumomf/internal/util"
 )
 
 type tExpSet struct {

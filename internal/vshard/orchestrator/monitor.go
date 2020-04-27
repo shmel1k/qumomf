@@ -5,7 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/shmel1k/qumomf/pkg/vshard"
+	"github.com/shmel1k/qumomf/internal/vshard"
 )
 
 type Monitor interface {

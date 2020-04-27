@@ -5,10 +5,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/shmel1k/qumomf/pkg/vshard"
+	"github.com/shmel1k/qumomf/internal/vshard"
 )
 
-func TestDelayElector(t *testing.T) {
+func Test_smartElector_ChooseMaster(t *testing.T) {
 	var testData = []struct {
 		name         string
 		set          vshard.ReplicaSet
@@ -18,19 +18,23 @@ func TestDelayElector(t *testing.T) {
 		{
 			name: "ShouldSelectExpectedReplica",
 			set: vshard.ReplicaSet{
+				MasterUUID: "1",
 				Instances: []vshard.Instance{
 					{
-						UUID:           "1",
-						LastCheckValid: false,
+						UUID:              "1",
+						LastCheckValid:    false,
+						VShardFingerprint: 100,
 						StorageInfo: vshard.StorageInfo{
 							Replication: vshard.Replication{
 								Status: vshard.StatusMaster,
 							},
 						},
 					},
-					{
-						UUID:           "2",
-						LastCheckValid: true,
+					{ // the best candidate
+						UUID:              "2",
+						LastCheckValid:    true,
+						LSNBehindMaster:   0,
+						VShardFingerprint: 100,
 						Upstream: &vshard.Upstream{
 							Status: vshard.UpstreamFollow,
 						},
@@ -44,9 +48,11 @@ func TestDelayElector(t *testing.T) {
 							},
 						},
 					},
-					{
-						UUID:           "3",
-						LastCheckValid: true,
+					{ // too far from master
+						UUID:              "3",
+						LastCheckValid:    true,
+						LSNBehindMaster:   10,
+						VShardFingerprint: 100,
 						Upstream: &vshard.Upstream{
 							Status: vshard.UpstreamFollow,
 						},
@@ -60,6 +66,24 @@ func TestDelayElector(t *testing.T) {
 							},
 						},
 					},
+					{ // inconsistent vshard configuration
+						UUID:              "4",
+						LastCheckValid:    true,
+						LSNBehindMaster:   0,
+						VShardFingerprint: 10,
+						Upstream: &vshard.Upstream{
+							Status: vshard.UpstreamFollow,
+						},
+						Downstream: &vshard.Downstream{
+							Status: vshard.DownstreamFollow,
+						},
+						StorageInfo: vshard.StorageInfo{
+							Replication: vshard.Replication{
+								Status: vshard.StatusFollow,
+								Delay:  0.0001,
+							},
+						},
+					},
 				},
 			},
 			expectedUUID: "2",
@@ -67,6 +91,7 @@ func TestDelayElector(t *testing.T) {
 		{
 			name: "NoAliveFollowers_ShouldReturnErr",
 			set: vshard.ReplicaSet{
+				MasterUUID: "1",
 				Instances: []vshard.Instance{
 					{
 						UUID:           "1",
@@ -97,7 +122,7 @@ func TestDelayElector(t *testing.T) {
 		},
 	}
 
-	e := NewDelayElector()
+	e := NewSmartElector()
 
 	for _, v := range testData {
 		vt := v

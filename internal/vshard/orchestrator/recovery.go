@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/shmel1k/qumomf/pkg/util"
-	"github.com/shmel1k/qumomf/pkg/vshard"
+	"github.com/shmel1k/qumomf/internal/util"
+	"github.com/shmel1k/qumomf/internal/vshard"
 )
 
 // recoveryTimeFormat is a datetime format used in logs.

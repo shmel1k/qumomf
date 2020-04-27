@@ -6,9 +6,9 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/shmel1k/qumomf/internal/config"
-	"github.com/shmel1k/qumomf/pkg/quorum"
-	"github.com/shmel1k/qumomf/pkg/vshard"
-	"github.com/shmel1k/qumomf/pkg/vshard/orchestrator"
+	"github.com/shmel1k/qumomf/internal/quorum"
+	"github.com/shmel1k/qumomf/internal/vshard"
+	"github.com/shmel1k/qumomf/internal/vshard/orchestrator"
 )
 
 var (

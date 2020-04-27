@@ -12,7 +12,7 @@ import (
 	"github.com/viciious/go-tarantool"
 
 	"github.com/shmel1k/qumomf/internal/config"
-	"github.com/shmel1k/qumomf/pkg/util"
+	"github.com/shmel1k/qumomf/internal/util"
 )
 
 func init() {

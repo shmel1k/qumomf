@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/shmel1k/qumomf/pkg/util"
-	"github.com/shmel1k/qumomf/pkg/vshard"
+	"github.com/shmel1k/qumomf/internal/util"
+	"github.com/shmel1k/qumomf/internal/vshard"
 )
 
 var mockAnalysis = &ReplicationAnalysis{

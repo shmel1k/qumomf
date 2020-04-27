@@ -3,7 +3,7 @@ package orchestrator
 import (
 	"time"
 
-	"github.com/shmel1k/qumomf/pkg/quorum"
+	"github.com/shmel1k/qumomf/internal/quorum"
 )
 
 type Config struct {

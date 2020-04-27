@@ -3,7 +3,7 @@ package quorum
 import (
 	"math"
 
-	"github.com/shmel1k/qumomf/pkg/vshard"
+	"github.com/shmel1k/qumomf/internal/vshard"
 )
 
 const (

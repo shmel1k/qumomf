@@ -3,7 +3,7 @@ package quorum
 import (
 	"errors"
 
-	"github.com/shmel1k/qumomf/pkg/vshard"
+	"github.com/shmel1k/qumomf/internal/vshard"
 )
 
 type Mode string

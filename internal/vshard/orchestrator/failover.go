@@ -11,9 +11,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/viciious/go-tarantool"
 
-	"github.com/shmel1k/qumomf/pkg/quorum"
-	"github.com/shmel1k/qumomf/pkg/util"
-	"github.com/shmel1k/qumomf/pkg/vshard"
+	"github.com/shmel1k/qumomf/internal/quorum"
+	"github.com/shmel1k/qumomf/internal/util"
+	"github.com/shmel1k/qumomf/internal/vshard"
 )
 
 const (
