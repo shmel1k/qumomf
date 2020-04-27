@@ -49,7 +49,8 @@ func TestSetup_ValidPath(t *testing.T) {
 				ConnectTimeout: newDuration(500 * time.Millisecond),
 				RequestTimeout: newDuration(1 * time.Second),
 			},
-			ReadOnly: newBool(false),
+			ReadOnly:     newBool(false),
+			ElectionMode: newString("smart"),
 			OverrideURIRules: map[string]string{
 				"qumomf_1_m.ddk:3301": "127.0.0.1:9303",
 			},
@@ -73,7 +74,8 @@ func TestSetup_ValidPath(t *testing.T) {
 				ConnectTimeout: newDuration(10 * time.Second),
 				RequestTimeout: newDuration(10 * time.Second),
 			},
-			ReadOnly: newBool(true),
+			ReadOnly:     newBool(true),
+			ElectionMode: newString("delay"),
 			Routers: []RouterConfig{
 				{
 					Name: "sandbox2-router1",
@@ -85,4 +87,13 @@ func TestSetup_ValidPath(t *testing.T) {
 	}
 
 	assert.Equal(t, expected, cfg.Clusters)
+}
+
+func TestSetup_InvalidElectorOption(t *testing.T) {
+	testConfigPath, err := filepath.Abs("testdata/bad-elector.conf.yaml")
+	require.Nil(t, err)
+
+	cfg, err := Setup(testConfigPath)
+	require.NotNil(t, err)
+	assert.Nil(t, cfg)
 }

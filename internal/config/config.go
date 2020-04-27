@@ -19,6 +19,7 @@ const (
 	defaultClusterRecoveryTime       = 1 * time.Second
 	defaultShardRecoveryBlockTime    = 30 * time.Minute
 	defaultInstanceRecoveryBlockTime = 10 * time.Minute
+	defaultElectorType               = "smart"
 )
 
 type Config struct {
@@ -31,6 +32,7 @@ type Config struct {
 		ClusterRecoveryTime       time.Duration `yaml:"cluster_recovery_time"`
 		ShardRecoveryBlockTime    time.Duration `yaml:"shard_recovery_block_time"`
 		InstanceRecoveryBlockTime time.Duration `yaml:"instance_recovery_block_time"`
+		ElectionMode              string        `yaml:"elector"`
 	} `yaml:"qumomf"`
 
 	// Connection contains the default connection options for each instance in clusters.
@@ -54,6 +56,9 @@ type ClusterConfig struct {
 	// ReadOnly indicates whether qumomf can run a failover
 	// or should just observe the cluster topology.
 	ReadOnly *bool `yaml:"readonly,omitempty"`
+
+	// ElectionMode is a master election mode of the given cluster.
+	ElectionMode *string `yaml:"elector"`
 
 	// OverrideURIRules contains list of URI used in tarantool replication and
 	// their mappings which will be used in connection pool by qumomf.
@@ -101,6 +106,11 @@ func Setup(path string) (*Config, error) {
 
 	cfg.overrideEmptyByGlobalConfigs()
 
+	err = validate(&cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	return &cfg, nil
 }
 
@@ -116,6 +126,7 @@ func (c *Config) withDefaults() {
 	base.ClusterRecoveryTime = defaultClusterRecoveryTime
 	base.ShardRecoveryBlockTime = defaultShardRecoveryBlockTime
 	base.InstanceRecoveryBlockTime = defaultInstanceRecoveryBlockTime
+	base.ElectionMode = defaultElectorType
 
 	connection := &ConnectConfig{}
 	connection.User = newString(defaultUser)
@@ -129,6 +140,10 @@ func (c *Config) overrideEmptyByGlobalConfigs() {
 	for clusterUUID, clusterCfg := range c.Clusters {
 		if clusterCfg.ReadOnly == nil {
 			clusterCfg.ReadOnly = newBool(c.Qumomf.ReadOnly)
+		}
+
+		if clusterCfg.ElectionMode == nil {
+			clusterCfg.ElectionMode = newString(c.Qumomf.ElectionMode)
 		}
 
 		if clusterCfg.Connection == nil {
@@ -151,6 +166,22 @@ func (c *Config) overrideEmptyByGlobalConfigs() {
 
 		c.Clusters[clusterUUID] = clusterCfg
 	}
+}
+
+func validate(c *Config) error {
+	err := validateElector(&c.Qumomf.ElectionMode)
+	if err != nil {
+		return err
+	}
+
+	for _, clusterCfg := range c.Clusters {
+		err = validateElector(clusterCfg.ElectionMode)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func newBool(v bool) *bool {

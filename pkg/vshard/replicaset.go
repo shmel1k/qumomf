@@ -55,6 +55,10 @@ func (set ReplicaSet) AliveFollowers() []Instance {
 			continue
 		}
 
+		if !inst.LastCheckValid {
+			continue
+		}
+
 		upstream := inst.Upstream
 		downstream := inst.Downstream
 

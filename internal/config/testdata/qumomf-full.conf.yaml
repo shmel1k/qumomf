@@ -6,6 +6,7 @@ qumomf:
   cluster_recovery_time: '5s'
   shard_recovery_block_time: '30m'
   instance_recovery_block_time: '10m'
+  elector: 'smart'
 
 connection:
   user: 'qumomf'
@@ -29,6 +30,8 @@ clusters:
         uuid: 'a3ef657e-eb9a-4730-b420-7ea78d52797d'
 
   qumomf_sandbox_2:
+    elector: 'delay'
+
     connection:
       user: 'tnt'
       password: 'tnt'

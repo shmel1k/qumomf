@@ -24,12 +24,17 @@ var (
 		Name: "vshard.router.info",
 	}
 	vshardBoxInfoQuery = &tarantool.Eval{
+		// nullify downstream.vclock because of
 		// https://github.com/viciious/go-tarantool/issues/41
 		Expression: `
 			local repl = {}
+			local master_id = box.info.id
+			local master_lsn = box.info.lsn
 			for i, r in pairs(box.info.replication) do
-				if r.downstream ~= nil then
-					r.downstream.vclock = string.format("%s", r.downstream.vclock)
+				if r.downstream then
+					local lsn = r.downstream.vclock[master_id] or 0
+					r.lsn_behind_master = master_lsn - lsn
+					r.downstream.vclock = nil
 				end
 				repl[r.id] = r
 			end

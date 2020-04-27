@@ -12,7 +12,7 @@ type Config struct {
 }
 
 type FailoverConfig struct {
-	Elector                     quorum.Quorum
+	Elector                     quorum.Elector
 	InstanceRecoveryBlockTime   time.Duration
 	ReplicaSetRecoveryBlockTime time.Duration
 }

@@ -1,34 +1,27 @@
 package quorum
 
 import (
-	"errors"
 	"math"
 
 	"github.com/shmel1k/qumomf/pkg/vshard"
-)
-
-var (
-	ErrNoAliveFollowers = errors.New("quorum: ReplicaSet does not have any alive followers")
-	ErrNoCandidateFound = errors.New("quorum: no available candidate found")
 )
 
 const (
 	maxLag = math.MaxFloat64
 )
 
-type Quorum interface {
-	// ChooseMaster selects new master and returns back its uuid
-	ChooseMaster(set vshard.ReplicaSet) (vshard.InstanceUUID, error)
+type delayElector struct {
 }
 
-type lagQuorum struct {
+// NewDelayElector returns a new elector based on replica's idle value.
+//
+// This elector chooses the candidate to be a master selecting
+// the replica with a minimum idle/lag value.
+func NewDelayElector() Elector {
+	return &delayElector{}
 }
 
-func NewLagQuorum() Quorum {
-	return &lagQuorum{}
-}
-
-func (*lagQuorum) ChooseMaster(set vshard.ReplicaSet) (vshard.InstanceUUID, error) {
+func (*delayElector) ChooseMaster(set vshard.ReplicaSet) (vshard.InstanceUUID, error) {
 	followers := set.AliveFollowers()
 	if len(followers) == 0 {
 		return "", ErrNoAliveFollowers
@@ -51,4 +44,8 @@ func (*lagQuorum) ChooseMaster(set vshard.ReplicaSet) (vshard.InstanceUUID, erro
 	}
 
 	return minUUID, nil
+}
+
+func (*delayElector) Mode() Mode {
+	return ModeDelay
 }

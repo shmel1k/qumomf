@@ -54,7 +54,7 @@ func (c Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, glob
 	}, clusterLogger)
 	c.addShutdownTask(mon.Shutdown)
 
-	elector := quorum.NewLagQuorum()
+	elector := quorum.New(quorum.Mode(*cfg.ElectionMode))
 	failover := orchestrator.NewDefaultFailover(cluster, orchestrator.FailoverConfig{
 		Elector:                     elector,
 		ReplicaSetRecoveryBlockTime: globalCfg.Qumomf.ShardRecoveryBlockTime,

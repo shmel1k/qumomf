@@ -102,7 +102,8 @@ func TestReplicaSet_AliveFollowers(t *testing.T) {
 						},
 					},
 					{
-						UUID: "replica_uuid_1",
+						UUID:           "replica_uuid_1",
+						LastCheckValid: true,
 						Upstream: &Upstream{
 							Status: UpstreamFollow,
 						},
@@ -111,7 +112,8 @@ func TestReplicaSet_AliveFollowers(t *testing.T) {
 						},
 					},
 					{
-						UUID: "replica_uuid_2",
+						UUID:           "replica_uuid_2",
+						LastCheckValid: true,
 						Upstream: &Upstream{
 							Status: UpstreamFollow,
 						},
@@ -120,9 +122,17 @@ func TestReplicaSet_AliveFollowers(t *testing.T) {
 						},
 					},
 					{
-						UUID: "replica_uuid_3",
+						UUID:           "replica_uuid_3",
+						LastCheckValid: true,
 						Upstream: &Upstream{
 							Status: UpstreamStopped,
+						},
+					},
+					{
+						UUID:           "replica_uuid_4",
+						LastCheckValid: false,
+						Upstream: &Upstream{
+							Status: UpstreamFollow,
 						},
 					},
 				},

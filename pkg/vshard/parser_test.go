@@ -98,16 +98,20 @@ func TestParseReplication(t *testing.T) {
 	assert.Len(t, data, 2)
 
 	master := data[0]
+	assert.Equal(t, uint64(1), master.ID)
 	assert.Equal(t, InstanceUUID("a94e7310-13f0-4690-b136-169599e87ba0"), master.UUID)
 	assert.Equal(t, "", master.URI) // No upstream data for master, URI must be set manually
 	assert.Equal(t, int64(105), master.LSN)
+	assert.Equal(t, int64(0), master.LSNBehindMaster)
 	assert.Nil(t, master.Upstream)
 	assert.Nil(t, master.Downstream)
 
 	replica := data[1]
+	assert.Equal(t, uint64(2), replica.ID)
 	assert.Equal(t, InstanceUUID("bd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1"), replica.UUID)
 	assert.Equal(t, "qumomf@qumomf_1_s.ddk:3301", replica.URI)
 	assert.Equal(t, int64(0), replica.LSN)
+	assert.Equal(t, int64(0), replica.LSNBehindMaster)
 	require.NotNil(t, replica.Upstream)
 	assert.Equal(t, UpstreamFollow, replica.Upstream.Status)
 	require.NotNil(t, replica.Downstream)

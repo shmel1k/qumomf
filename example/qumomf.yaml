@@ -6,6 +6,7 @@ qumomf:
   cluster_recovery_time: '1s'
   shard_recovery_block_time: '30m'
   instance_recovery_block_time: '10m'
+  elector: 'smart'
 
 connection:
   user: 'qumomf'

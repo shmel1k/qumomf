@@ -418,6 +418,11 @@ func ParseReplication(data [][]interface{}) ([]Instance, error) {
 			return nil, err
 		}
 
+		id, err := mp.getUInt64("id")
+		if err != nil {
+			return nil, err
+		}
+
 		uuid, err := mp.getString("uuid")
 		if err != nil {
 			return nil, err
@@ -426,6 +431,14 @@ func ParseReplication(data [][]interface{}) ([]Instance, error) {
 		lsn, err := mp.getInt64("lsn")
 		if err != nil {
 			return nil, err
+		}
+
+		lsnBehindMaster := int64(0)
+		if _, ok := mp["lsn_behind_master"]; ok {
+			lsnBehindMaster, err = mp.getInt64("lsn_behind_master")
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		upstream, err := parseUpstream(mp)
@@ -444,11 +457,13 @@ func ParseReplication(data [][]interface{}) ([]Instance, error) {
 		}
 
 		inst := Instance{
-			UUID:       InstanceUUID(uuid),
-			URI:        uri,
-			LSN:        lsn,
-			Upstream:   upstream,
-			Downstream: downstream,
+			ID:              id,
+			UUID:            InstanceUUID(uuid),
+			URI:             uri,
+			LSN:             lsn,
+			LSNBehindMaster: lsnBehindMaster,
+			Upstream:        upstream,
+			Downstream:      downstream,
 		}
 
 		instances = append(instances, inst)
@@ -506,12 +521,12 @@ func parseUpstream(dt container) (*Upstream, error) {
 }
 
 func parseDownstream(dt container) (*Downstream, error) {
-	_, ok := dt["upstream"]
+	_, ok := dt["downstream"]
 	if !ok {
 		return nil, nil
 	}
 
-	u, err := dt.getContainer("upstream")
+	u, err := dt.getContainer("downstream")
 	if err != nil {
 		return nil, err
 	}

@@ -1,0 +1,11 @@
+qumomf:
+  elector: 'smart'
+
+clusters:
+  qumomf_sandbox_1:
+    elector: 'unknown'
+
+    routers:
+      - name: 'sandbox1-router1'
+        addr: '127.0.0.1:9301'
+        uuid: 'a94e7310-13f0-4690-b136-169599e87ba0'
