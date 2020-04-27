@@ -52,6 +52,9 @@ const (
 )
 
 type Instance struct {
+	// ID is a short numeric identifier of the instance within the replica set.
+	ID uint64 `json:"id"`
+
 	// UUID is a global unique identifier of the instance.
 	UUID InstanceUUID `json:"uuid"`
 
@@ -66,6 +69,9 @@ type Instance struct {
 
 	// LSN is the log sequence number (LSN) for the latest entry in the instance’s write ahead log (WAL).
 	LSN int64 `json:"lsn"`
+
+	// LSNBehindMaster is a measure of how the replica is far from master.
+	LSNBehindMaster int64 `json:"lsn_behind_master"`
 
 	// Upstream contains statistics for the replication data uploaded by the instance.
 	Upstream *Upstream `json:"upstream"`

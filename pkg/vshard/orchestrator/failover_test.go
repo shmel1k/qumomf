@@ -44,7 +44,7 @@ func (s *failoverTestSuite) Test_failover_promoteFollowerToMaster() {
 	s.cluster.Discover()
 	require.InDelta(t, util.Timestamp(), s.cluster.LastDiscovered(), 1)
 
-	elector := quorum.NewLagQuorum()
+	elector := quorum.NewDelayElector()
 	logger := zerolog.New(zerolog.NewConsoleWriter()).With().Timestamp().Logger()
 
 	s.failover = NewDefaultFailover(s.cluster, FailoverConfig{
@@ -131,7 +131,7 @@ func (s *failoverTestSuite) Test_failover_wishEventualConsistency() {
 	s.cluster.Discover()
 	require.InDelta(t, util.Timestamp(), s.cluster.LastDiscovered(), 1)
 
-	elector := quorum.NewLagQuorum()
+	elector := quorum.NewDelayElector()
 	logger := zerolog.New(zerolog.NewConsoleWriter())
 
 	s.failover = NewDefaultFailover(s.cluster, FailoverConfig{

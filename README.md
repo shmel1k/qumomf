@@ -35,12 +35,30 @@ clusters:
 For a sample vshard configuration, 
 see [qumomf example](/example) or [Tarantool documentation](https://www.tarantool.io/en/doc/1.10/reference/reference_rock/vshard/vshard_quick/#vshard-config-cluster-example).
 
-Start qumomf, and it will discover all defined clusters.
+Start qumomf, and it will discover all clusters defined in the configuration.
 
-## Test
+## Topology recovery
+
+Just now qumomf supports only automated master recovery.
+It is a configurable option and can be disabled completely or for a cluster via configuration.
+
+Master election supports two modes:
+
+1. `delay` - naive and simple elector which finds alive replica last communicated to the failed master (received data or heartbeat signal).
+2. `smart` - elector tries to involve as many metrics as can:
+  - vshard configuration consistency (prefer replica which has the same configuration as master), 
+  - how replica is far from master comparing LSN to master LSN,
+  - last time when replica received data or heartbeat signal from master. 
+
+Election mode might be configured for each cluster.
+
+## Hacking
+
+Feel free to open issues and pull requests with your ideas how to improve qumomf.
+
+To run unit and integration tests:
 
 ```bash
-# Unit & Integration tests
 make env_up
 make run_tests
 make env_down

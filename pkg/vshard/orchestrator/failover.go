@@ -66,7 +66,7 @@ type Failover interface {
 
 type failover struct {
 	cluster *vshard.Cluster
-	elector quorum.Quorum
+	elector quorum.Elector
 
 	recoveries      []Recovery
 	recvSync        sync.RWMutex

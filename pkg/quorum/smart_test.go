@@ -3,30 +3,38 @@ package quorum
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/shmel1k/qumomf/pkg/vshard"
 )
 
-func TestLagQuorum(t *testing.T) {
+func Test_smartElector_ChooseMaster(t *testing.T) {
 	var testData = []struct {
-		testName     string
+		name         string
 		set          vshard.ReplicaSet
 		expectedUUID vshard.InstanceUUID
 		expectedErr  error
 	}{
 		{
-			testName: "ShouldSelectExpectedReplica",
+			name: "ShouldSelectExpectedReplica",
 			set: vshard.ReplicaSet{
+				MasterUUID: "1",
 				Instances: []vshard.Instance{
 					{
-						UUID: "1",
+						UUID:              "1",
+						LastCheckValid:    false,
+						VShardFingerprint: 100,
 						StorageInfo: vshard.StorageInfo{
 							Replication: vshard.Replication{
 								Status: vshard.StatusMaster,
 							},
 						},
 					},
-					{
-						UUID: "2",
+					{ // the best candidate
+						UUID:              "2",
+						LastCheckValid:    true,
+						LSNBehindMaster:   0,
+						VShardFingerprint: 100,
 						Upstream: &vshard.Upstream{
 							Status: vshard.UpstreamFollow,
 						},
@@ -40,8 +48,11 @@ func TestLagQuorum(t *testing.T) {
 							},
 						},
 					},
-					{
-						UUID: "3",
+					{ // too far from master
+						UUID:              "3",
+						LastCheckValid:    true,
+						LSNBehindMaster:   10,
+						VShardFingerprint: 100,
 						Upstream: &vshard.Upstream{
 							Status: vshard.UpstreamFollow,
 						},
@@ -55,16 +66,36 @@ func TestLagQuorum(t *testing.T) {
 							},
 						},
 					},
+					{ // inconsistent vshard configuration
+						UUID:              "4",
+						LastCheckValid:    true,
+						LSNBehindMaster:   0,
+						VShardFingerprint: 10,
+						Upstream: &vshard.Upstream{
+							Status: vshard.UpstreamFollow,
+						},
+						Downstream: &vshard.Downstream{
+							Status: vshard.DownstreamFollow,
+						},
+						StorageInfo: vshard.StorageInfo{
+							Replication: vshard.Replication{
+								Status: vshard.StatusFollow,
+								Delay:  0.0001,
+							},
+						},
+					},
 				},
 			},
 			expectedUUID: "2",
 		},
 		{
-			testName: "NoAliveFollowers_ShouldReturnErr",
+			name: "NoAliveFollowers_ShouldReturnErr",
 			set: vshard.ReplicaSet{
+				MasterUUID: "1",
 				Instances: []vshard.Instance{
 					{
-						UUID: "1",
+						UUID:           "1",
+						LastCheckValid: false,
 						StorageInfo: vshard.StorageInfo{
 							Replication: vshard.Replication{
 								Status: vshard.StatusMaster,
@@ -72,7 +103,8 @@ func TestLagQuorum(t *testing.T) {
 						},
 					},
 					{
-						UUID: "2",
+						UUID:           "2",
+						LastCheckValid: true,
 						Upstream: &vshard.Upstream{
 							Status: vshard.UpstreamDisconnected,
 						},
@@ -82,7 +114,7 @@ func TestLagQuorum(t *testing.T) {
 			expectedErr: ErrNoAliveFollowers,
 		},
 		{
-			testName: "EmptySet_ShouldReturnErr",
+			name: "EmptySet_ShouldReturnErr",
 			set: vshard.ReplicaSet{
 				Instances: nil,
 			},
@@ -90,18 +122,14 @@ func TestLagQuorum(t *testing.T) {
 		},
 	}
 
-	l := &lagQuorum{}
+	e := NewSmartElector()
 
 	for _, v := range testData {
 		vt := v
-		t.Run(v.testName, func(t *testing.T) {
-			uid, err := l.ChooseMaster(vt.set)
-			if err != vt.expectedErr {
-				t.Errorf("got err %v, expected %v", err, vt.expectedErr)
-			}
-			if uid != vt.expectedUUID {
-				t.Errorf("got uid %q, got %q", uid, vt.expectedUUID)
-			}
+		t.Run(v.name, func(t *testing.T) {
+			uuid, err := e.ChooseMaster(vt.set)
+			assert.Equal(t, vt.expectedErr, err)
+			assert.Equal(t, vt.expectedUUID, uuid)
 		})
 	}
 }
