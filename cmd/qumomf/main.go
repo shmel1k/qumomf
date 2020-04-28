@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -25,8 +29,18 @@ func main() {
 	}
 
 	logger := initLogger(cfg)
+	server := initHTTPServer(cfg.Qumomf.Port)
 
 	logger.Info().Msg("Starting qumomf")
+
+	go func() {
+		logger.Info().Msgf("Listening on %s", cfg.Qumomf.Port)
+
+		err = server.ListenAndServe()
+		if err != http.ErrServerClosed {
+			logger.Err(err).Msg("Failed to listen HTTP server")
+		}
+	}()
 
 	qCoordinator := coordinator.New(logger)
 	for clusterName, clusterCfg := range cfg.Clusters {
@@ -44,6 +58,11 @@ func main() {
 
 	logger.Info().Msgf("Received system signal: %s. Shutting down qumomf", sig)
 	qCoordinator.Shutdown()
+
+	err = server.Shutdown(context.Background())
+	if err != nil {
+		logger.Err(err).Msg("Failed to shutting down the HTTP server gracefully")
+	}
 }
 
 func initLogger(cfg *config.Config) zerolog.Logger {
@@ -56,4 +75,17 @@ func initLogger(cfg *config.Config) zerolog.Logger {
 	}
 
 	return zerolog.New(os.Stdout).Level(logLevel).With().Timestamp().Logger()
+}
+
+func initHTTPServer(port string) *http.Server {
+	server := &http.Server{
+		Addr:         port,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 35 * time.Second,
+	}
+
+	// Init routing.
+	http.Handle("/metrics", promhttp.Handler())
+
+	return server
 }
