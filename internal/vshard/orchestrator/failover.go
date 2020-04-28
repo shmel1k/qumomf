@@ -211,9 +211,16 @@ func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *Replic
 	conn := f.cluster.Connector(candidate.URI)
 	resp := conn.Exec(ctx, recvQuery)
 	if resp.Error == nil {
-		logger.Info().Msgf("Configuration of the chosen master '%s' was updated", candidateUUID)
+		logger.Info().
+			Str("URI", candidate.URI).
+			Str("UUID", string(candidateUUID)).
+			Msg("Configuration of the chosen master '%s' was updated")
 	} else {
-		logger.Err(resp.Error).Msgf("Recovery fatal error: failed to update the configuration of the chosen master '%s'", candidateUUID)
+		logger.Err(resp.Error).
+			Str("URI", candidate.URI).
+			Str("UUID", string(candidateUUID)).
+			Msg("Recovery fatal error: failed to update the configuration of the chosen master")
+
 		return []Recovery{recv}
 	}
 
@@ -224,9 +231,15 @@ func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *Replic
 		conn := f.cluster.Connector(r.URI)
 		resp := conn.Exec(ctx, recvQuery)
 		if resp.Error == nil {
-			logger.Info().Msgf("Configuration was updated on router '%s'", r.UUID)
+			logger.Info().
+				Str("URI", r.URI).
+				Str("UUID", string(r.UUID)).
+				Msg("Configuration was updated on router '%s'")
 		} else {
-			logger.Err(resp.Error).Msgf("Failed to update configuration on router '%s'", r.UUID)
+			logger.Err(resp.Error).
+				Str("URI", r.URI).
+				Str("UUID", string(r.UUID)).
+				Msg("Failed to update configuration on router")
 		}
 	}
 
@@ -244,9 +257,15 @@ func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *Replic
 		conn := f.cluster.Connector(inst.URI)
 		resp := conn.Exec(ctx, recvQuery)
 		if resp.Error == nil {
-			logger.Info().Msgf("Configuration was updated on node '%s'", inst.UUID)
+			logger.Info().
+				Str("URI", inst.URI).
+				Str("UUID", string(inst.UUID)).
+				Msg("Configuration was updated on node")
 		} else {
-			logger.Err(resp.Error).Msgf("Failed to update configuration on node '%s'", inst.UUID)
+			logger.Err(resp.Error).
+				Str("URI", inst.URI).
+				Str("UUID", string(inst.UUID)).
+				Msg("Failed to update configuration on node")
 		}
 	}
 
@@ -271,7 +290,10 @@ func (f *failover) wishEventualConsistency(ctx context.Context, analysis *Replic
 		}
 
 		if f.hasBlockedRecovery(string(inst.UUID)) {
-			logger.Warn().Msgf("Instance '%s' has been recovered recently so new failover is blocked", inst.UUID)
+			logger.Warn().
+				Str("URI", inst.URI).
+				Str("UUID", string(inst.UUID)).
+				Msg("Instance has been recovered recently so new failover is blocked")
 			continue
 		}
 
@@ -280,10 +302,16 @@ func (f *failover) wishEventualConsistency(ctx context.Context, analysis *Replic
 		conn := f.cluster.Connector(inst.URI)
 		resp := conn.Exec(ctx, recvQuery)
 		if resp.Error == nil {
-			logger.Info().Msgf("Configuration was updated on node '%s'", inst.UUID)
+			logger.Info().
+				Str("URI", inst.URI).
+				Str("UUID", string(inst.UUID)).
+				Msg("Configuration was updated on node")
 			recv.IsSuccessful = true
 		} else {
-			logger.Err(resp.Error).Msgf("Failed to update configuration on node '%s'", inst.UUID)
+			logger.Err(resp.Error).
+				Str("URI", inst.URI).
+				Str("UUID", string(inst.UUID)).
+				Msg("Failed to update configuration on node")
 		}
 
 		recv.EndTimestamp = util.Timestamp()
