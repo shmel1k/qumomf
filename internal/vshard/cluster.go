@@ -250,13 +250,20 @@ func (c *Cluster) Discover() {
 	conn := c.Connector(router.URI)
 	resp := conn.Exec(ctx, vshardRouterInfoQuery)
 	if resp.Error != nil {
-		c.logger.Err(resp.Error).Msgf("Failed to discover the topology of the cluster. Error code: %d", resp.ErrorCode)
+		c.logger.
+			Err(resp.Error).
+			Str("URI", router.URI).
+			Str("UUID", string(router.UUID)).
+			Msgf("Failed to discover the topology of the cluster. Error code: %d", resp.ErrorCode)
 		return
 	}
 
 	updatedRI, err := ParseRouterInfo(resp.Data)
 	if err != nil {
-		c.logger.Err(err).Msgf("Failed to discover the topology of the cluster using router '%s'", router.UUID)
+		c.logger.Err(err).
+			Str("URI", router.URI).
+			Str("UUID", string(router.UUID)).
+			Msg("Failed to discover the topology of the cluster using router")
 		return
 	}
 	updatedRI.LastSeen = util.Timestamp()
@@ -275,6 +282,8 @@ func (c *Cluster) Discover() {
 			if err != nil {
 				c.logger.Err(err).
 					Str("ReplicaSet", string(uuid)).
+					Str("URI", master.URI).
+					Str("UUID", string(master.UUID)).
 					Msg("Failed to update the topology, will use the previous snapshot")
 
 				// Fallback to the previous snapshot data.
@@ -372,14 +381,20 @@ func (c *Cluster) discoverInstance(ctx context.Context, inst *Instance) {
 	conn := c.Connector(inst.URI)
 	resp := conn.Exec(ctx, vshardInstanceInfoQuery)
 	if resp.Error != nil {
-		c.logger.Err(resp.Error).Msgf("Failed to discover the instance '%s'", inst.UUID)
+		c.logger.Err(resp.Error).
+			Str("URI", inst.URI).
+			Str("UUID", string(inst.UUID)).
+			Msg("Failed to discover the instance")
 		inst.LastCheckValid = false
 		return
 	}
 
 	info, err := ParseInstanceInfo(resp.Data)
 	if err != nil {
-		c.logger.Err(err).Msgf("Failed to read info of the instance '%s'", inst.UUID)
+		c.logger.Err(err).
+			Str("URI", inst.URI).
+			Str("UUID", string(inst.UUID)).
+			Msg("Failed to read info of the instance")
 		inst.LastCheckValid = false // TODO: not accurate
 		return
 	}
