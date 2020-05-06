@@ -32,7 +32,10 @@ var (
 			local master_lsn = box.info.lsn
 			for i, r in pairs(box.info.replication) do
 				if r.downstream then
-					local lsn = r.downstream.vclock[master_id] or 0
+					local lsn = 0
+					if r.downstream.vclock then
+						lsn = r.downstream.vclock[master_id] or 0
+					end
 					r.lsn_behind_master = master_lsn - lsn
 					r.downstream.vclock = nil
 				end
