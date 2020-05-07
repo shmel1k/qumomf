@@ -150,6 +150,8 @@ func analyze(set vshard.ReplicaSet, logger zerolog.Logger) *ReplicationAnalysis 
 		} else {
 			state = InconsistentVShardConfiguration
 		}
+	} else if !isMasterDead && countReplicas > 0 && countReplicatingReplicas < countReplicas {
+		state = DeadFollowers
 	}
 
 	return &ReplicationAnalysis{

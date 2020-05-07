@@ -144,6 +144,25 @@ func Test_storageMonitor_analyze(t *testing.T) {
 			},
 		},
 		{
+			name: "DeadFollowers",
+			set: vshard.ReplicaSet{
+				UUID:       "set_1",
+				MasterUUID: "replica_1",
+				Instances: []vshard.Instance{
+					mockInstance(1, true, vshard.StatusMaster),
+					mockInstance(2, true, vshard.StatusFollow),
+					mockInstance(3, false, vshard.StatusDisconnected),
+					mockInstance(4, false, vshard.StatusDisconnected),
+				},
+			},
+			want: &ReplicationAnalysis{
+				CountReplicas:            3,
+				CountWorkingReplicas:     1,
+				CountReplicatingReplicas: 1,
+				State:                    DeadFollowers,
+			},
+		},
+		{
 			name: "AllMasterFollowersNotReplicating",
 			set: vshard.ReplicaSet{
 				UUID:       "set_1",
