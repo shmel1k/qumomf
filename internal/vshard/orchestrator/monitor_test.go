@@ -180,6 +180,25 @@ func Test_storageMonitor_analyze(t *testing.T) {
 			},
 		},
 		{
+			name: "MasterMasterReplication",
+			set: vshard.ReplicaSet{
+				UUID:       "set_1",
+				MasterUUID: "replica_1",
+				Instances: []vshard.Instance{
+					mockInstance(1, true, vshard.StatusMaster),
+					mockInvalidVShardConf(mockInstance(2, true, vshard.StatusMaster)),
+					mockInstance(3, true, vshard.StatusFollow),
+				},
+			},
+			want: &ReplicationAnalysis{
+				CountReplicas:               2,
+				CountWorkingReplicas:        2,
+				CountReplicatingReplicas:    2,
+				CountInconsistentVShardConf: 1,
+				State:                       MasterMasterReplication,
+			},
+		},
+		{
 			name: "InconsistentVShardConfiguration",
 			set: vshard.ReplicaSet{
 				UUID:       "set_1",

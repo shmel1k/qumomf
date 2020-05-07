@@ -45,14 +45,37 @@ var (
 		`,
 	}
 	vshardInstanceInfoQuery = &tarantool.Eval{
+		// to calculate crc32 of the shard config we have to
+		// deep sort the config otherwise we might get different hashes
+		// for the same configurations.
 		Expression: `
 			digest = require('digest')
-			json = require('json')
+
+			local shard_uuid = box.info.cluster.uuid
+			local shard_cfg = vshard.storage.internal.current_cfg.sharding[shard_uuid].replicas
+
+			local c = digest.crc32.new()
+
+			local inst_keys = {}
+			for k in pairs(shard_cfg) do table.insert(inst_keys, k) end
+			table.sort(inst_keys)
+			for _, ik in ipairs(inst_keys) do
+				c:update(ik)
+
+				local inst = shard_cfg[ik]
+
+				local keys = {}
+				for k in pairs(inst) do table.insert(keys, k) end
+				table.sort(keys)
+				for _, vk in ipairs(keys) do 
+					c:update(tostring(inst[vk]))
+				end 
+			end
 
 			local data = {}
 			data.storage = vshard.storage.info()
 			data.read_only = box.cfg.read_only
-			data.vshard_fingerprint = digest.crc32(json.encode(vshard.storage.internal.current_cfg.sharding))
+			data.vshard_fingerprint = c:result()
 			return data
 		`,
 	}

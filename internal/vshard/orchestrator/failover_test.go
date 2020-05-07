@@ -151,7 +151,7 @@ func (s *failoverTestSuite) Test_failover_promoteFollowerToMaster() {
 	}
 }
 
-func (s *failoverTestSuite) Test_failover_wishEventualConsistency() {
+func (s *failoverTestSuite) Test_failover_migrateMMToMSTopology() {
 	t := s.T()
 
 	if testing.Short() {
@@ -194,7 +194,7 @@ func (s *failoverTestSuite) Test_failover_wishEventualConsistency() {
 				CountWorkingReplicas:        1,
 				CountReplicatingReplicas:    1,
 				CountInconsistentVShardConf: 1,
-				State:                       InconsistentVShardConfiguration,
+				State:                       MasterMasterReplication,
 			}
 			stream <- analysis
 

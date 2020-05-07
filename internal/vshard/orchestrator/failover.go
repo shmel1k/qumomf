@@ -42,17 +42,17 @@ const (
 		end
 
 		if is_storage then
-			log.warn("qumomf: apply new vshard configuration on storage")
-			local this_uuid = vshard.storage.internal.this_replica.uuid
+			log.warn("qumomf: apply new vshard configuration to storage")
+			local this_uuid = box.info.uuid
 			vshard.storage.cfg(cfg, this_uuid)
 
-			if vshard.storage.internal.this_replicaset.uuid == "{set_uuid}" then 
+			if box.info.cluster.uuid == "{set_uuid}" then 
 				box.cfg({
 					read_only = this_uuid ~= "{new_master_uuid}",
 				})
 			end
 		else
-			log.warn("qumomf: apply new vshard configuration on router")
+			log.warn("qumomf: apply new vshard configuration to router")
 			vshard.router.cfg(cfg)
 		end
 		log.warn("qumomf: end recovery")
@@ -170,9 +170,11 @@ func (f *failover) getCheckAndRecoveryFunc(state ReplicaSetState) (rf RecoveryFu
 		desc = "Master cannot be reached by qumomf and has no followers. No actions will be applied."
 	case NetworkProblems:
 		desc = "Master cannot be reached by qumomf but some followers are still replicating. It might be a network problem, no actions will be applied."
+	case MasterMasterReplication:
+		rf = f.migrateMMToMSTopology
+		desc = "Found master-master topology. Will apply follower role to all masters except a shard leader."
 	case InconsistentVShardConfiguration:
-		rf = f.wishEventualConsistency
-		desc = "Found replicas with inconsistent vshard topology. Will sync master configuration on that replicas."
+		desc = "Found replicas with inconsistent vshard topology. No actions will be applied."
 	default:
 		panic(fmt.Sprintf("Unknown analysis state: %s", state))
 	}
@@ -214,7 +216,7 @@ func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *Replic
 		logger.Info().
 			Str("URI", candidate.URI).
 			Str("UUID", string(candidateUUID)).
-			Msg("Configuration of the chosen master '%s' was updated")
+			Msg("Configuration of the chosen master was updated")
 	} else {
 		logger.Err(resp.Error).
 			Str("URI", candidate.URI).
@@ -234,7 +236,7 @@ func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *Replic
 			logger.Info().
 				Str("URI", r.URI).
 				Str("UUID", string(r.UUID)).
-				Msg("Configuration was updated on router '%s'")
+				Msg("Configuration was updated on router")
 		} else {
 			logger.Err(resp.Error).
 				Str("URI", r.URI).
@@ -273,7 +275,8 @@ func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *Replic
 	return []Recovery{recv}
 }
 
-func (f *failover) wishEventualConsistency(ctx context.Context, analysis *ReplicationAnalysis) []Recovery {
+// migrateMMToMSTopology applies follower role to all masters in the shard except the leader.
+func (f *failover) migrateMMToMSTopology(ctx context.Context, analysis *ReplicationAnalysis) []Recovery {
 	badSet := &analysis.Set
 	logger := f.logger.With().Str("ReplicaSet", string(badSet.UUID)).Logger()
 

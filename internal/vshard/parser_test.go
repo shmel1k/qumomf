@@ -143,7 +143,7 @@ func TestParseInstanceInfo(t *testing.T) {
 	require.Nil(t, err)
 
 	assert.True(t, data.Readonly)
-	assert.Equal(t, uint64(1010165886), data.VShardFingerprint)
+	assert.Equal(t, uint64(251215738), data.VShardFingerprint)
 
 	storage := &data.StorageInfo
 	assert.Equal(t, HealthCodeGreen, storage.Status)
