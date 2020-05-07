@@ -102,6 +102,7 @@ func analyze(set vshard.ReplicaSet, logger zerolog.Logger) *ReplicationAnalysis 
 	countWorkingReplicas := 0
 	countReplicatingReplicas := 0
 	countInconsistentVShardConf := 0
+	masterMasterReplication := false
 	followers := set.Followers()
 	for i := range followers {
 		r := &followers[i]
@@ -114,6 +115,7 @@ func analyze(set vshard.ReplicaSet, logger zerolog.Logger) *ReplicationAnalysis 
 				countReplicatingReplicas++
 			} else if status == vshard.StatusMaster {
 				countReplicatingReplicas++
+				masterMasterReplication = true
 				logger.Warn().Msgf("Found M-M replication ('%s'-'%s')", set.MasterUUID, r.UUID)
 			}
 
@@ -143,7 +145,11 @@ func analyze(set vshard.ReplicaSet, logger zerolog.Logger) *ReplicationAnalysis 
 	} else if !isMasterDead && countReplicas > 0 && countReplicatingReplicas == 0 {
 		state = AllMasterFollowersNotReplicating
 	} else if countInconsistentVShardConf > 0 {
-		state = InconsistentVShardConfiguration
+		if masterMasterReplication {
+			state = MasterMasterReplication
+		} else {
+			state = InconsistentVShardConfiguration
+		}
 	}
 
 	return &ReplicationAnalysis{

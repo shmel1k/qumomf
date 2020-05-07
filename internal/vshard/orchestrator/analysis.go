@@ -23,6 +23,7 @@ const (
 	DeadMasterWithoutFollowers       ReplicaSetState = "DeadMasterWithoutFollowers"
 	AllMasterFollowersNotReplicating ReplicaSetState = "AllMasterFollowersNotReplicating"
 	NetworkProblems                  ReplicaSetState = "NetworkProblems"
+	MasterMasterReplication          ReplicaSetState = "MasterMasterReplication"
 	InconsistentVShardConfiguration  ReplicaSetState = "InconsistentVShardConfiguration"
 )
 
