@@ -133,6 +133,9 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 
 	recvFunc, desc := f.getCheckAndRecoveryFunc(analysis.State)
 	if recvFunc == nil {
+		if desc != "" {
+			logger.Warn().Msg(desc)
+		}
 		return
 	}
 
@@ -168,6 +171,8 @@ func (f *failover) getCheckAndRecoveryFunc(state ReplicaSetState) (rf RecoveryFu
 		desc = "Master is reachable but none of its replicas is replicating. No actions will be applied."
 	case DeadMasterWithoutFollowers:
 		desc = "Master cannot be reached by qumomf and has no followers. No actions will be applied."
+	case DeadFollowers:
+		desc = "Master is reachable but some of its replicas are not replicating. No actions will be applied."
 	case NetworkProblems:
 		desc = "Master cannot be reached by qumomf but some followers are still replicating. It might be a network problem, no actions will be applied."
 	case MasterMasterReplication:

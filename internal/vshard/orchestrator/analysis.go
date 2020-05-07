@@ -21,6 +21,7 @@ const (
 	DeadMasterAndFollowers           ReplicaSetState = "DeadMasterAndFollowers"
 	DeadMasterAndSomeFollowers       ReplicaSetState = "DeadMasterAndSomeFollowers"
 	DeadMasterWithoutFollowers       ReplicaSetState = "DeadMasterWithoutFollowers"
+	DeadFollowers                    ReplicaSetState = "DeadFollowers"
 	AllMasterFollowersNotReplicating ReplicaSetState = "AllMasterFollowersNotReplicating"
 	NetworkProblems                  ReplicaSetState = "NetworkProblems"
 	MasterMasterReplication          ReplicaSetState = "MasterMasterReplication"
