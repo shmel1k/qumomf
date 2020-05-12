@@ -208,13 +208,18 @@ func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *Replic
 	}
 	recv.SuccessorUUID = candidateUUID
 
+	candidate, _ := f.cluster.Instance(candidateUUID)
+	if ok, reason := f.shouldPromoteFollower(candidate); !ok {
+		logger.Warn().Msgf("Promotion of the chosen candidate is too complex. The recovery is interrupted. Reason: %s", reason)
+		return []Recovery{recv}
+	}
+
 	logger.Info().Msgf("New master is elected: %s. Going to update cluster configuration", candidateUUID)
 
 	recvQuery := buildRecoveryQuery(badSet.UUID, candidateUUID)
 
 	// First priority is updating the configuration of the new master.
 	// If any error, exit from the recovery.
-	candidate, _ := f.cluster.Instance(candidateUUID)
 	conn := f.cluster.Connector(candidate.URI)
 	resp := conn.Exec(ctx, recvQuery)
 	if resp.Error == nil {
@@ -278,6 +283,23 @@ func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *Replic
 
 	recv.IsSuccessful = true
 	return []Recovery{recv}
+}
+
+// shouldPromoteFollower performs some checks of the chosen candidate to ensure
+// that failover will not make the shard state even worse.
+//
+// Sometimes it is better to give up and allow leather bags to do their job.
+func (f *failover) shouldPromoteFollower(inst vshard.Instance) (ok bool, reason string) {
+	if inst.LSNBehindMaster < 0 {
+		return false, "master LSN is behind the candidate LSN: replication might was broken before the crash"
+	}
+
+	upstreamStatus := inst.Upstream.Status
+	if upstreamStatus != vshard.UpstreamFollow && upstreamStatus != vshard.UpstreamRunning {
+		return false, "candidate had neither an upstream status Follow nor Running before the crash"
+	}
+
+	return true, ""
 }
 
 // migrateMMToMSTopology applies follower role to all masters in the shard except the leader.

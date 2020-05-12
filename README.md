@@ -47,6 +47,7 @@ Master election supports two modes:
 1. `delay` - naive and simple elector which finds alive replica last communicated to the failed master (received data or heartbeat signal).
 2. `smart` - elector tries to involve as many metrics as can:
   - vshard configuration consistency (prefer replica which has the same configuration as master), 
+  - which upstream status did replica have before the crash,
   - how replica is far from master comparing LSN to master LSN,
   - last time when replica received data or heartbeat signal from master. 
 
