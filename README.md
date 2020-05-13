@@ -64,6 +64,10 @@ Master election supports two modes:
 
 Election mode might be configured for each cluster.
 
+## Runtime metrics
+
+Qumomf exports runtime metrics to Prometheus via `/metrics` endpoint.
+
 ## Hacking
 
 Feel free to open issues and pull requests with your ideas how to improve qumomf.

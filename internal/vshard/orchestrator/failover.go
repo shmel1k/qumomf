@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/viciious/go-tarantool"
 
+	"github.com/shmel1k/qumomf/internal/metrics"
 	"github.com/shmel1k/qumomf/internal/quorum"
 	"github.com/shmel1k/qumomf/internal/util"
 	"github.com/shmel1k/qumomf/internal/vshard"
@@ -146,6 +147,8 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 	for _, recv := range recoveries {
 		f.registryRecovery(recv)
 		logger.Info().Msgf("Finished recovery: %s", recv)
+
+		metrics.NewRecoveryAttempt(recv.LockKey(), recv.Reason(), recv.Succeed())
 	}
 	if len(recoveries) > 0 {
 		logger.Info().Msg("Run a force discovery after applied recoveries")

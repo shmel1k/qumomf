@@ -12,6 +12,7 @@ import (
 	"github.com/viciious/go-tarantool"
 
 	"github.com/shmel1k/qumomf/internal/config"
+	"github.com/shmel1k/qumomf/internal/metrics"
 	"github.com/shmel1k/qumomf/internal/util"
 )
 
@@ -255,6 +256,9 @@ func (c *Cluster) Shutdown() {
 }
 
 func (c *Cluster) Discover() {
+	txn := metrics.StartClusterDiscovery(c.Name)
+	defer txn.End()
+
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second) // TODO: move to config
 	defer cancel()
@@ -267,6 +271,7 @@ func (c *Cluster) Discover() {
 
 	router := pickUpRandomRouter(snapshot.Routers)
 	if router == nil {
+		metrics.NewFailedClusterDiscoveryAttempt(c.Name)
 		c.logger.Error().Msg("There is no router in the cluster to discover its topology")
 		return
 	}
@@ -276,6 +281,7 @@ func (c *Cluster) Discover() {
 	conn := c.Connector(router.URI)
 	resp := conn.Exec(ctx, vshardRouterInfoQuery)
 	if resp.Error != nil {
+		metrics.NewFailedClusterDiscoveryAttempt(c.Name)
 		c.logger.
 			Err(resp.Error).
 			Str("URI", router.URI).
@@ -286,6 +292,7 @@ func (c *Cluster) Discover() {
 
 	updatedRI, err := ParseRouterInfo(resp.Data)
 	if err != nil {
+		metrics.NewFailedClusterDiscoveryAttempt(c.Name)
 		c.logger.Err(err).
 			Str("URI", router.URI).
 			Str("UUID", string(router.UUID)).
@@ -351,6 +358,10 @@ func (c *Cluster) Discover() {
 	}
 	for set := range discovered {
 		ns.ReplicaSets = append(ns.ReplicaSets, set)
+
+		code, _ := set.HealthStatus()
+		metrics.SetShardCriticalLevel(string(set.UUID), int(code))
+
 		c.logger.Debug().Msgf("Discovered: %s", set.String())
 	}
 
@@ -404,9 +415,14 @@ func (c *Cluster) discoverInstances(ctx context.Context, instances []Instance) {
 }
 
 func (c *Cluster) discoverInstance(ctx context.Context, inst *Instance) {
+	txn := metrics.StartInstanceDiscovery(inst.URI)
+	defer txn.End()
+
 	conn := c.Connector(inst.URI)
 	resp := conn.Exec(ctx, vshardInstanceInfoQuery)
 	if resp.Error != nil {
+		metrics.NewFailedInstanceDiscoveryAttempt(inst.URI)
+
 		c.logger.Err(resp.Error).
 			Str("URI", inst.URI).
 			Str("UUID", string(inst.UUID)).
@@ -417,6 +433,8 @@ func (c *Cluster) discoverInstance(ctx context.Context, inst *Instance) {
 
 	info, err := ParseInstanceInfo(resp.Data)
 	if err != nil {
+		metrics.NewFailedInstanceDiscoveryAttempt(inst.URI)
+
 		c.logger.Err(err).
 			Str("URI", inst.URI).
 			Str("UUID", string(inst.UUID)).
