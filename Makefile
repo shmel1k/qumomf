@@ -6,7 +6,7 @@ build:
 
 .PHONY: run
 run: build
-	bin/qumomf -config=example/qumomf.yaml
+	bin/qumomf -config=example/qumomf.yml
 
 .PHONY: env_up
 env_up:

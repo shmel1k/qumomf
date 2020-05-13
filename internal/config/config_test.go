@@ -16,7 +16,7 @@ func TestSetup_InvalidPath(t *testing.T) {
 }
 
 func TestSetup_ValidPath(t *testing.T) {
-	testConfigPath, err := filepath.Abs("testdata/qumomf-full.conf.yaml")
+	testConfigPath, err := filepath.Abs("testdata/qumomf-full.conf.yml")
 	require.Nil(t, err)
 
 	cfg, err := Setup(testConfigPath)
@@ -90,7 +90,7 @@ func TestSetup_ValidPath(t *testing.T) {
 }
 
 func TestSetup_InvalidElectorOption(t *testing.T) {
-	testConfigPath, err := filepath.Abs("testdata/bad-elector.conf.yaml")
+	testConfigPath, err := filepath.Abs("testdata/bad-elector.conf.yml")
 	require.Nil(t, err)
 
 	cfg, err := Setup(testConfigPath)
