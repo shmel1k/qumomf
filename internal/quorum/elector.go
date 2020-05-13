@@ -2,6 +2,7 @@ package quorum
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/shmel1k/qumomf/internal/vshard"
 )
@@ -33,5 +34,5 @@ func New(m Mode) Elector {
 		return NewSmartElector()
 	}
 
-	panic("This code should not be reached!")
+	panic(fmt.Sprintf("Elector: got unknown mode %s", m))
 }
