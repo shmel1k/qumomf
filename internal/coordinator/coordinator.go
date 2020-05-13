@@ -36,7 +36,7 @@ func New(logger zerolog.Logger) *Coordinator {
 	}
 }
 
-func (c Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, globalCfg *config.Config) error {
+func (c *Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, globalCfg *config.Config) error {
 	if _, exist := c.clusters[name]; exist {
 		return ErrClusterAlreadyExist
 	}
@@ -68,13 +68,13 @@ func (c Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, glob
 	return nil
 }
 
-func (c Coordinator) Shutdown() {
+func (c *Coordinator) Shutdown() {
 	for i := len(c.shutdownQueue) - 1; i >= 0; i-- {
 		task := c.shutdownQueue[i]
 		task()
 	}
 }
 
-func (c Coordinator) addShutdownTask(task shutdownTask) {
+func (c *Coordinator) addShutdownTask(task shutdownTask) {
 	c.shutdownQueue = append(c.shutdownQueue, task)
 }
