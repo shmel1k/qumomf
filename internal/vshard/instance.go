@@ -41,6 +41,8 @@ const (
 	HealthCodeOrange HealthCode = 2
 	// A replica set is disabled.
 	HealthCodeRed HealthCode = 3
+	// If something will change.
+	HealthCodeUnknown HealthCode = 4
 )
 
 const (
@@ -111,7 +113,7 @@ type Downstream struct {
 	Status DownstreamStatus `json:"status"`
 }
 
-func (i Instance) HasAlert(t AlertType) bool {
+func (i *Instance) HasAlert(t AlertType) bool {
 	for _, a := range i.StorageInfo.Alerts {
 		if a.Type == t {
 			return true
@@ -121,8 +123,12 @@ func (i Instance) HasAlert(t AlertType) bool {
 	return false
 }
 
-func (i Instance) CriticalLevel() HealthLevel {
-	switch i.StorageInfo.Status {
+func (i *Instance) CriticalCode() HealthCode {
+	return i.StorageInfo.Status
+}
+
+func (i *Instance) CriticalLevel() HealthLevel {
+	switch i.CriticalCode() {
 	case HealthCodeGreen:
 		return HealthLevelGreen
 	case HealthCodeYellow:

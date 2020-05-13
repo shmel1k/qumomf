@@ -20,13 +20,13 @@ type ReplicaSet struct {
 	Instances []Instance `json:"instances"`
 }
 
-func (set ReplicaSet) CriticalLevel() HealthLevel {
+func (set ReplicaSet) HealthStatus() (code HealthCode, level HealthLevel) {
 	master, err := set.Master()
 	if err != nil {
-		return HealthLevelUnknown
+		return HealthCodeUnknown, HealthLevelUnknown
 	}
 
-	return master.CriticalLevel()
+	return master.CriticalCode(), master.CriticalLevel()
 }
 
 func (set ReplicaSet) Followers() []Instance {
@@ -101,7 +101,7 @@ func (set ReplicaSet) String() string {
 	sb.WriteString("; size: ")
 	sb.WriteString(strconv.Itoa(len(set.Instances)))
 	sb.WriteString("; health: ")
-	cl := set.CriticalLevel()
+	_, cl := set.HealthStatus()
 	sb.WriteString(string(cl))
 
 	if cl == HealthLevelGreen {

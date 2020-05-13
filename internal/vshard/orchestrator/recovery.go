@@ -21,6 +21,7 @@ type Recovery interface {
 	Reason() string
 	LockKey() string
 	Expired() bool
+	Succeed() bool
 }
 
 type SetRecovery struct {
@@ -57,6 +58,10 @@ func (r SetRecovery) LockKey() string {
 func (r SetRecovery) Expired() bool {
 	now := util.Timestamp()
 	return r.Expiration < now
+}
+
+func (r SetRecovery) Succeed() bool {
+	return r.IsSuccessful
 }
 
 func (r SetRecovery) String() string {
@@ -98,6 +103,10 @@ func (r InstanceRecovery) LockKey() string {
 func (r InstanceRecovery) Expired() bool {
 	now := util.Timestamp()
 	return r.Expiration < now
+}
+
+func (r InstanceRecovery) Succeed() bool {
+	return r.IsSuccessful
 }
 
 func (r InstanceRecovery) String() string {
