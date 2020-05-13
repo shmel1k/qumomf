@@ -1,0 +1,73 @@
+qumomf:
+  # TCP port to listen.
+  port: ':8080'
+  # Verbose level of logging: trace, debug, info, warn, error, fatal, panic.
+  # To disable logging, pass an empty string.
+  log_level: "debug"
+  # Indicates whether qumomf should run in the readonly mode:
+  # no auto failover will be executed.
+  # Can be overwritten by cluster-specific options.
+  readonly: true
+  # How often should qumomf discover the cluster topology.
+  cluster_discovery_time: '5s'
+  # How often should qumomf analyze the cluster state.
+  cluster_recovery_time: '1s'
+  # Qumomf avoids flapping (cascading failures causing continuous outage and elimination of resources)
+  # by introducing a block period, where on any given cluster, qumomf will not kick in automated recovery
+  # on an interval smaller than said period.
+  # It only applies to recoveries on the same cluster.
+  # There is nothing to prevent concurrent recoveries running on different clusters.
+  shard_recovery_block_time: '30m'
+  # Similar to the shard_recovery_block_time option but defines recovery block period
+  # only for a single instance. Used during the vshard configuration recovery.
+  instance_recovery_block_time: '10m'
+  # How should qumomf choose a new master during the failover.
+  # Available options: delay, smart.
+  # See README for description.
+  # Can be overwritten by cluster-specific options.
+  elector: 'smart'
+
+# Tarantool connection options.
+# Can be overwritten by cluster-specific options.
+connection:
+  user: 'qumomf'
+  password: 'qumomf'
+  connect_timeout: '500ms'
+  request_timeout: '1s'
+
+# List of all clusters.
+clusters:
+  # Cluster unique name.
+  qumomf_sandbox:
+    readonly: false
+
+    # During the autodiscovery qumomf will use the information
+    # read from tarantool instances.
+    # You may want to override the URI of the instances.
+    override_uri_rules:
+      'qumomf_1_m.ddk:3301': '127.0.0.1:9303'
+      'qumomf_1_s.ddk:3301': '127.0.0.1:9304'
+      'qumomf_2_m.ddk:3301': '127.0.0.1:9305'
+      'qumomf_2_s_1.ddk:3301': '127.0.0.1:9306'
+      'qumomf_2_s_2.ddk:3301': '127.0.0.1:9307'
+
+    # List of all routers in the cluster.
+    # Used to discover the cluster topology.
+    routers:
+      - name: 'router_1'
+        uuid: 'router_1_uuid'
+        addr: '127.0.0.1:9301'
+
+  qumomf_sandbox_2:
+    elector: 'delay'
+
+    connection:
+      user: 'tnt'
+      password: 'tnt'
+      connect_timeout: 10s
+      request_timeout: 10s
+
+    routers:
+      - name: 'sandbox2-router1'
+        uuid: '38dbe90b-9bca-4766-a98c-f02e56ddf986'
+        addr: '127.0.0.1:7301'

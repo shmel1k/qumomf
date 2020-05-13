@@ -2,7 +2,18 @@
 
 Qumomf is a Tarantool vshard high availability tool which supports discovery and recovery.
 
-## How to add a new cluster
+## Discovery
+
+Qumomf actively crawls through your topologies and analyzes them. 
+It reads basic vshard info such as replication status and configuration.
+
+You should provide at least one router which will be an entrypoint to the discovery process.
+
+## Configuration
+
+For a sample qumomf configuration and its description see [example](config/qumomf.conf.yml).
+
+### How to add a new cluster
 
 Edit your configuration file and add a new cluster, e.g.:
 
