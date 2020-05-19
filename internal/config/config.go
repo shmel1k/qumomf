@@ -21,6 +21,8 @@ const (
 	defaultInstanceRecoveryBlockTime = 10 * time.Minute
 	defaultElectorType               = "smart"
 	defaultShellCommand              = "bash"
+	defaultHookTimeout               = 5 * time.Second
+	defaultAsyncHookTimeout          = 10 * time.Minute
 )
 
 type Config struct {
@@ -35,10 +37,12 @@ type Config struct {
 		InstanceRecoveryBlockTime time.Duration `yaml:"instance_recovery_block_time"`
 		ElectionMode              string        `yaml:"elector"`
 		Hooks                     struct {
-			Shell                    string   `yaml:"shell"`
-			PreFailover              []string `yaml:"pre_failover"`
-			PostSuccessfulFailover   []string `yaml:"post_successful_failover"`
-			PostUnsuccessfulFailover []string `yaml:"post_unsuccessful_failover"`
+			Shell                    string        `yaml:"shell"`
+			PreFailover              []string      `yaml:"pre_failover"`
+			PostSuccessfulFailover   []string      `yaml:"post_successful_failover"`
+			PostUnsuccessfulFailover []string      `yaml:"post_unsuccessful_failover"`
+			Timeout                  time.Duration `yaml:"timeout"`
+			TimeoutAsync             time.Duration `yaml:"timeout_async"`
 		} `yaml:"hooks"`
 	} `yaml:"qumomf"`
 
@@ -135,6 +139,8 @@ func (c *Config) withDefaults() {
 	base.InstanceRecoveryBlockTime = defaultInstanceRecoveryBlockTime
 	base.ElectionMode = defaultElectorType
 	base.Hooks.Shell = defaultShellCommand
+	base.Hooks.Timeout = defaultHookTimeout
+	base.Hooks.TimeoutAsync = defaultAsyncHookTimeout
 
 	connection := &ConnectConfig{}
 	connection.User = newString(defaultUser)

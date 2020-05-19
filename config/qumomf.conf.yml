@@ -32,6 +32,10 @@ qumomf:
   hooks:
     # Shell to use invoking hooks in format "shell -c <command>".
     shell: bash
+    # Deadline timeout for basic hooks.
+    timeout: 5s
+    # Deadline timeout for async hooks.
+    timeout_async: 10m
     # PreFailover hooks executed before the recovery process.
     pre_failover:
       - "echo 'Will recover from {failureType} on {failureCluster}' >> /tmp/qumomf_recovery.log"

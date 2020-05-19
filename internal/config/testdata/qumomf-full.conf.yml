@@ -10,6 +10,8 @@ qumomf:
 
   hooks:
     shell: bash
+    timeout: 5s
+    timeout_async: 10m
     pre_failover:
       - "echo 'Will recover from {failureType} on {failureCluster}' >> /tmp/qumomf_recovery.log"
     post_successful_failover:

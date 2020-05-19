@@ -33,6 +33,8 @@ func TestSetup_ValidPath(t *testing.T) {
 
 	hooks := cfg.Qumomf.Hooks
 	assert.Equal(t, "bash", hooks.Shell)
+	assert.Equal(t, 5*time.Second, hooks.Timeout)
+	assert.Equal(t, 10*time.Minute, hooks.TimeoutAsync)
 	assert.Equal(t, []string{"echo 'Will recover from {failureType} on {failureCluster}' >> /tmp/qumomf_recovery.log"}, hooks.PreFailover)
 	assert.Equal(t, []string{"echo 'Recovered from {failureType} on {failureCluster}. Set: {failureReplicaSetUUID}; Failed: {failedURI}; Successor: {successorURI}' >> /tmp/qumomf_recovery.log"}, hooks.PostSuccessfulFailover)
 	assert.Equal(t, []string{"echo 'Failed to recover from {failureType} on {failureCluster}. Set: {failureReplicaSetUUID}; Failed: {failedURI}' >> /tmp/qumomf_recovery.log"}, hooks.PostUnsuccessfulFailover)
