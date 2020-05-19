@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -26,6 +27,8 @@ const (
 type Hooker struct {
 	processesShellCommand string
 	processes             map[HookType][]string
+	timeout               time.Duration
+	timeoutAsync          time.Duration
 	logger                zerolog.Logger
 }
 
@@ -33,12 +36,24 @@ func NewHooker(shell string, logger zerolog.Logger) *Hooker {
 	return &Hooker{
 		processesShellCommand: shell,
 		processes:             make(map[HookType][]string),
+		timeout:               2 * time.Second,
+		timeoutAsync:          10 * time.Minute,
 		logger:                logger,
 	}
 }
 
 func NewBashHooker(logger zerolog.Logger) *Hooker {
 	return NewHooker(ShellBash, logger)
+}
+
+// SetTimeout sets timeout for basic hook.
+func (h *Hooker) SetTimeout(t time.Duration) {
+	h.timeout = t
+}
+
+// SetTimeoutAsync sets timeout for async hook.
+func (h *Hooker) SetTimeoutAsync(t time.Duration) {
+	h.timeoutAsync = t
 }
 
 func (h *Hooker) AddHook(t HookType, commands ...string) {
@@ -69,11 +84,17 @@ func (h *Hooker) ExecuteProcesses(t HookType, recv *Recovery, failOnError bool) 
 		}
 		if async {
 			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), h.timeoutAsync)
 				// Ignore errors, it is async process.
-				_ = h.executeProcess(command, env, fullDescription)
+				_ = h.executeProcess(ctx, command, env, fullDescription)
+				cancel()
 			}()
-		} else { //nolint:gocritic
-			if cmdErr := h.executeProcess(command, env, fullDescription); cmdErr != nil {
+		} else {
+			ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
+			cmdErr := h.executeProcess(ctx, command, env, fullDescription)
+			cancel()
+
+			if cmdErr != nil {
 				if failOnError {
 					h.logger.Warn().Msgf("Not running further %s hooks", t)
 					return cmdErr
@@ -90,12 +111,12 @@ func (h *Hooker) ExecuteProcesses(t HookType, recv *Recovery, failOnError bool) 
 	return err
 }
 
-func (h *Hooker) executeProcess(command string, env []string, fullDescription string) error {
+func (h *Hooker) executeProcess(ctx context.Context, command string, env []string, fullDescription string) error {
 	// Log the command to be run and record how long it takes as this may be useful.
 	h.logger.Info().Msgf("Running %s: %s", fullDescription, command)
 	start := time.Now()
 
-	cmd := exec.Command(h.processesShellCommand, "-c", command) //nolint:gosec
+	cmd := exec.CommandContext(ctx, h.processesShellCommand, "-c", command) //nolint:gosec
 	cmd.Env = env
 
 	err := cmd.Run()

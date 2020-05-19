@@ -84,6 +84,8 @@ func (c *Coordinator) addShutdownTask(task shutdownTask) {
 func initHooker(cfg *config.Config, logger zerolog.Logger) *orchestrator.Hooker {
 	hooksCfg := cfg.Qumomf.Hooks
 	hooker := orchestrator.NewHooker(hooksCfg.Shell, logger)
+	hooker.SetTimeout(hooksCfg.Timeout)
+	hooker.SetTimeoutAsync(hooksCfg.TimeoutAsync)
 
 	hooker.AddHook(orchestrator.HookPreFailover, hooksCfg.PreFailover...)
 	hooker.AddHook(orchestrator.HookPostSuccessfulFailover, hooksCfg.PostSuccessfulFailover...)
