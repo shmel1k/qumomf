@@ -12,6 +12,7 @@ type Config struct {
 }
 
 type FailoverConfig struct {
+	Hooker                      *Hooker
 	Elector                     quorum.Elector
 	InstanceRecoveryBlockTime   time.Duration
 	ReplicaSetRecoveryBlockTime time.Duration

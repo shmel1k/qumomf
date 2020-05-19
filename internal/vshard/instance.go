@@ -1,5 +1,7 @@
 package vshard
 
+import "strings"
+
 type InstanceUUID string
 
 type ReplicationStatus string
@@ -88,6 +90,22 @@ type Instance struct {
 	VShardFingerprint uint64 `json:"vshard_fingerprint"`
 }
 
+// InstanceIdent contains unique UUID and URI of the instance.
+type InstanceIdent struct {
+	UUID InstanceUUID
+	URI  string
+}
+
+func (ident InstanceIdent) String() string {
+	var sb strings.Builder
+	sb.Grow(len(ident.URI) + len(ident.UUID) + 1)
+	sb.WriteString(string(ident.UUID))
+	sb.WriteRune('/')
+	sb.WriteString(ident.URI)
+
+	return sb.String()
+}
+
 // Upstream contains statistics for the replication data uploaded by the instance.
 type Upstream struct {
 	// Peer contains the replication user name, host IP address and port number used for the instance.
@@ -111,6 +129,13 @@ type Upstream struct {
 type Downstream struct {
 	// Status is the replication status for downstream replications.
 	Status DownstreamStatus `json:"status"`
+}
+
+func (i *Instance) Ident() InstanceIdent {
+	return InstanceIdent{
+		UUID: i.UUID,
+		URI:  i.URI,
+	}
 }
 
 func (i *Instance) HasAlert(t AlertType) bool {

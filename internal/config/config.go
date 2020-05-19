@@ -20,6 +20,7 @@ const (
 	defaultShardRecoveryBlockTime    = 30 * time.Minute
 	defaultInstanceRecoveryBlockTime = 10 * time.Minute
 	defaultElectorType               = "smart"
+	defaultShellCommand              = "bash"
 )
 
 type Config struct {
@@ -33,6 +34,12 @@ type Config struct {
 		ShardRecoveryBlockTime    time.Duration `yaml:"shard_recovery_block_time"`
 		InstanceRecoveryBlockTime time.Duration `yaml:"instance_recovery_block_time"`
 		ElectionMode              string        `yaml:"elector"`
+		Hooks                     struct {
+			Shell                    string   `yaml:"shell"`
+			PreFailover              []string `yaml:"pre_failover"`
+			PostSuccessfulFailover   []string `yaml:"post_successful_failover"`
+			PostUnsuccessfulFailover []string `yaml:"post_unsuccessful_failover"`
+		} `yaml:"hooks"`
 	} `yaml:"qumomf"`
 
 	// Connection contains the default connection options for each instance in clusters.
@@ -127,6 +134,7 @@ func (c *Config) withDefaults() {
 	base.ShardRecoveryBlockTime = defaultShardRecoveryBlockTime
 	base.InstanceRecoveryBlockTime = defaultInstanceRecoveryBlockTime
 	base.ElectionMode = defaultElectorType
+	base.Hooks.Shell = defaultShellCommand
 
 	connection := &ConnectConfig{}
 	connection.User = newString(defaultUser)

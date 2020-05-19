@@ -23,18 +23,30 @@ var mockAnalysis = &ReplicationAnalysis{
 
 func TestNewRecovery(t *testing.T) {
 	ttl := 100 * time.Second
-	r := NewSetRecovery(mockAnalysis, ttl)
+	failed := vshard.InstanceIdent{
+		UUID: "master",
+		URI:  "localhost:3301",
+	}
+	r := NewRecovery(RecoveryScopeSet, failed, *mockAnalysis)
+	r.ExpireAfter(ttl)
 
+	assert.Equal(t, *mockAnalysis, r.AnalysisEntry)
 	assert.Equal(t, mockAnalysis.Set.UUID, r.SetUUID)
-	assert.Equal(t, mockAnalysis.Set.MasterUUID, r.FailedUUID)
-	assert.Equal(t, string(DeadMaster), r.Reason())
+	assert.Equal(t, failed.UUID, r.Failed.UUID)
+	assert.Equal(t, failed.URI, r.Failed.URI)
+	assert.Equal(t, string(DeadMaster), r.Type)
 	assert.InDelta(t, util.Timestamp(), r.StartTimestamp, 5)
 	assert.InDelta(t, time.Now().Add(ttl).UTC().Unix(), r.Expiration, 1)
 }
 
 func TestRecovery_Expired(t *testing.T) {
 	ttl := 1 * time.Second
-	r := NewSetRecovery(mockAnalysis, ttl)
+	failed := vshard.InstanceIdent{
+		UUID: "master",
+		URI:  "localhost:3301",
+	}
+	r := NewRecovery(RecoveryScopeInstance, failed, *mockAnalysis)
+	r.ExpireAfter(ttl)
 
 	assert.False(t, r.Expired())
 	time.Sleep(2 * ttl)

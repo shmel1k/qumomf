@@ -72,8 +72,10 @@ func (s *failoverTestSuite) Test_failover_promoteFollowerToMaster() {
 	for _, tt := range tests {
 		tt := tt
 		s.Run(tt.name, func() {
+			hooker := NewBashHooker(s.logger)
 			elector := quorum.New(tt.mode)
 			s.failover = NewDefaultFailover(s.cluster, FailoverConfig{
+				Hooker:                      hooker,
 				Elector:                     elector,
 				ReplicaSetRecoveryBlockTime: 2 * time.Second,
 			}, s.logger)
@@ -98,19 +100,18 @@ func (s *failoverTestSuite) Test_failover_promoteFollowerToMaster() {
 				return fv.hasBlockedRecovery(string(set.UUID))
 			}, 5*time.Second, 100*time.Millisecond)
 			require.Len(t, fv.recoveries, 1)
-			recv, ok := fv.recoveries[0].(*SetRecovery)
-			require.True(t, ok)
+			recv := fv.recoveries[0]
 
 			require.True(t, recv.IsSuccessful)
 			assert.InDelta(t, util.Timestamp(), recv.StartTimestamp, 5)
 			assert.InDelta(t, util.Timestamp(), recv.EndTimestamp, 2)
-			assert.Equal(t, string(analysis.State), recv.Reason())
-			assert.Equal(t, set.MasterUUID, recv.FailedUUID)
+			assert.Equal(t, string(analysis.State), recv.Type)
+			assert.Equal(t, set.MasterUUID, recv.Failed.UUID)
 
 			recvSet, err := s.cluster.ReplicaSet("7432f072-c00b-4498-b1a6-6d9547a8a150")
 			require.Nil(t, err)
 
-			assert.Equal(t, recv.SuccessorUUID, recvSet.MasterUUID)
+			assert.Equal(t, recv.Successor.UUID, recvSet.MasterUUID)
 
 			master, err := recvSet.Master()
 			require.Nil(t, err)
@@ -141,17 +142,16 @@ func (s *failoverTestSuite) Test_failover_promoteFollowerToMaster() {
 			require.Len(t, fv.recoveries, 1)
 			assert.True(t, recv != fv.recoveries[0])
 
-			recv, ok = fv.recoveries[0].(*SetRecovery)
-			require.True(t, ok)
+			recv = fv.recoveries[0]
 			assert.True(t, recv.IsSuccessful)
-			assert.Equal(t, set.MasterUUID, recv.SuccessorUUID)
+			assert.Equal(t, set.MasterUUID, recv.Successor.UUID)
 
 			time.Sleep(1 * time.Second)
 		})
 	}
 }
 
-func (s *failoverTestSuite) Test_failover_migrateMMToMSTopology() {
+func (s *failoverTestSuite) Test_failover_applyFollowerRoleToCoMasters() {
 	t := s.T()
 
 	if testing.Short() {
@@ -164,8 +164,10 @@ func (s *failoverTestSuite) Test_failover_migrateMMToMSTopology() {
 	for _, tt := range tests {
 		tt := tt
 		s.Run(tt.name, func() {
+			hooker := NewBashHooker(s.logger)
 			elector := quorum.New(tt.mode)
 			s.failover = NewDefaultFailover(s.cluster, FailoverConfig{
+				Hooker:                      hooker,
 				Elector:                     elector,
 				ReplicaSetRecoveryBlockTime: 2 * time.Second,
 				InstanceRecoveryBlockTime:   2 * time.Second,
@@ -202,12 +204,11 @@ func (s *failoverTestSuite) Test_failover_migrateMMToMSTopology() {
 				return fv.hasBlockedRecovery(invalidUUID)
 			}, 5*time.Second, 100*time.Millisecond)
 			require.Len(t, fv.recoveries, 1)
-			recv, ok := fv.recoveries[0].(*InstanceRecovery)
-			require.True(t, ok)
+			recv := fv.recoveries[0]
 
 			assert.True(t, recv.IsSuccessful)
-			assert.Equal(t, string(analysis.State), recv.Reason())
-			assert.Equal(t, invalidUUID, recv.LockKey())
+			assert.Equal(t, string(analysis.State), recv.Type)
+			assert.Equal(t, invalidUUID, recv.ScopeKey())
 			assert.False(t, recv.Expired())
 
 			time.Sleep(1 * time.Second)
