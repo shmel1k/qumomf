@@ -68,8 +68,9 @@ type Failover interface {
 type failover struct {
 	cluster *vshard.Cluster
 	elector quorum.Elector
+	hooker  *Hooker
 
-	recoveries      []Recovery
+	recoveries      []*Recovery
 	recvSync        sync.RWMutex
 	recvSetTTL      time.Duration
 	recvInstanceTTL time.Duration
@@ -82,7 +83,8 @@ func NewDefaultFailover(cluster *vshard.Cluster, cfg FailoverConfig, logger zero
 	return &failover{
 		cluster:         cluster,
 		elector:         cfg.Elector,
-		recoveries:      make([]Recovery, 0),
+		hooker:          cfg.Hooker,
+		recoveries:      make([]*Recovery, 0),
 		recvSetTTL:      cfg.ReplicaSetRecoveryBlockTime,
 		recvInstanceTTL: cfg.InstanceRecoveryBlockTime,
 		stop:            make(chan struct{}, 1),
@@ -146,9 +148,15 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 	recoveries := recvFunc(ctx, analysis)
 	for _, recv := range recoveries {
 		f.registryRecovery(recv)
-		logger.Info().Msgf("Finished recovery: %s", recv)
 
-		metrics.NewRecoveryAttempt(recv.LockKey(), recv.Reason(), recv.Succeed())
+		if recv.IsSuccessful {
+			_ = f.hooker.ExecuteProcesses(HookPostSuccessfulFailover, recv, false)
+		} else {
+			_ = f.hooker.ExecuteProcesses(HookPostUnsuccessfulFailover, recv, false)
+		}
+
+		logger.Info().Msgf("Finished recovery: %s", recv)
+		metrics.NewRecoveryAttempt(recv.ScopeKey(), recv.Type, recv.IsSuccessful)
 	}
 	if len(recoveries) > 0 {
 		logger.Info().Msg("Run a force discovery after applied recoveries")
@@ -179,8 +187,8 @@ func (f *failover) getCheckAndRecoveryFunc(state ReplicaSetState) (rf RecoveryFu
 	case NetworkProblems:
 		desc = "Master cannot be reached by qumomf but some followers are still replicating. It might be a network problem, no actions will be applied."
 	case MasterMasterReplication:
-		rf = f.migrateMMToMSTopology
-		desc = "Found master-master topology. Will apply follower role to all masters except a shard leader."
+		rf = f.applyFollowerRoleToCoMasters
+		desc = "Found master-master topology. Will apply follower role to all co-masters except a shard leader."
 	case InconsistentVShardConfiguration:
 		desc = "Found replicas with inconsistent vshard topology. No actions will be applied."
 	default:
@@ -190,7 +198,7 @@ func (f *failover) getCheckAndRecoveryFunc(state ReplicaSetState) (rf RecoveryFu
 	return
 }
 
-func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *ReplicationAnalysis) []Recovery {
+func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *ReplicationAnalysis) []*Recovery {
 	badSet := analysis.Set
 	logger := f.logger.With().Str("ReplicaSet", string(badSet.UUID)).Logger()
 
@@ -199,22 +207,30 @@ func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *Replic
 		return nil
 	}
 
-	recv := NewSetRecovery(analysis, f.recvSetTTL)
+	failed, _ := badSet.Master()
+	recv := NewRecovery(RecoveryScopeSet, failed.Ident(), *analysis)
+	recv.ExpireAfter(f.recvSetTTL)
+	recv.ClusterName = f.cluster.Name
 	defer func() {
 		recv.EndTimestamp = util.Timestamp()
 	}()
 
+	err := f.hooker.ExecuteProcesses(HookPreFailover, recv, true)
+	if err != nil {
+		return []*Recovery{recv}
+	}
+
 	candidateUUID, err := f.elector.ChooseMaster(badSet)
 	if err != nil {
 		logger.Err(err).Msg("Failed to elect a new master")
-		return []Recovery{recv}
+		return []*Recovery{recv}
 	}
-	recv.SuccessorUUID = candidateUUID
 
 	candidate, _ := f.cluster.Instance(candidateUUID)
+	recv.Successor = candidate.Ident()
 	if ok, reason := f.shouldPromoteFollower(candidate); !ok {
 		logger.Warn().Msgf("Promotion of the chosen candidate is too complex. The recovery is interrupted. Reason: %s", reason)
-		return []Recovery{recv}
+		return []*Recovery{recv}
 	}
 
 	logger.Info().Msgf("New master is elected: %s. Going to update cluster configuration", candidateUUID)
@@ -236,7 +252,7 @@ func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *Replic
 			Str("UUID", string(candidateUUID)).
 			Msg("Recovery fatal error: failed to update the configuration of the chosen master")
 
-		return []Recovery{recv}
+		return []*Recovery{recv}
 	}
 
 	// Update routers configuration to accept write requests as quickly as possible.
@@ -285,7 +301,7 @@ func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *Replic
 	}
 
 	recv.IsSuccessful = true
-	return []Recovery{recv}
+	return []*Recovery{recv}
 }
 
 // shouldPromoteFollower performs some checks of the chosen candidate to ensure
@@ -305,8 +321,8 @@ func (f *failover) shouldPromoteFollower(inst vshard.Instance) (ok bool, reason 
 	return true, ""
 }
 
-// migrateMMToMSTopology applies follower role to all masters in the shard except the leader.
-func (f *failover) migrateMMToMSTopology(ctx context.Context, analysis *ReplicationAnalysis) []Recovery {
+// applyFollowerRoleToCoMasters applies follower role to all masters in the shard except the leader.
+func (f *failover) applyFollowerRoleToCoMasters(ctx context.Context, analysis *ReplicationAnalysis) []*Recovery {
 	badSet := &analysis.Set
 	logger := f.logger.With().Str("ReplicaSet", string(badSet.UUID)).Logger()
 
@@ -314,7 +330,7 @@ func (f *failover) migrateMMToMSTopology(ctx context.Context, analysis *Replicat
 
 	master, _ := badSet.Master()
 	followers := badSet.Followers()
-	recoveries := make([]Recovery, 0)
+	recoveries := make([]*Recovery, 0)
 	for i := range followers {
 		inst := &followers[i]
 
@@ -327,10 +343,21 @@ func (f *failover) migrateMMToMSTopology(ctx context.Context, analysis *Replicat
 				Str("URI", inst.URI).
 				Str("UUID", string(inst.UUID)).
 				Msg("Instance has been recovered recently so new failover is blocked")
+
 			continue
 		}
 
-		recv := NewInstanceRecovery(inst.UUID, string(analysis.State), f.recvInstanceTTL)
+		recv := NewRecovery(RecoveryScopeInstance, inst.Ident(), *analysis)
+		recv.ExpireAfter(f.recvInstanceTTL)
+		recv.ClusterName = f.cluster.Name
+
+		err := f.hooker.ExecuteProcesses(HookPreFailover, recv, true)
+		if err != nil {
+			recv.EndTimestamp = util.Timestamp()
+			recoveries = append(recoveries, recv)
+
+			continue
+		}
 
 		conn := f.cluster.Connector(inst.URI)
 		resp := conn.Exec(ctx, recvQuery)
@@ -354,7 +381,7 @@ func (f *failover) migrateMMToMSTopology(ctx context.Context, analysis *Replicat
 	return recoveries
 }
 
-func (f *failover) registryRecovery(r Recovery) {
+func (f *failover) registryRecovery(r *Recovery) {
 	f.recvSync.Lock()
 	f.recoveries = append(f.recoveries, r)
 	f.recvSync.Unlock()
@@ -365,7 +392,7 @@ func (f *failover) hasBlockedRecovery(key string) bool {
 	defer f.recvSync.RUnlock()
 
 	for _, b := range f.recoveries {
-		if b.LockKey() == key && !b.Expired() {
+		if b.ScopeKey() == key && !b.Expired() {
 			return true
 		}
 	}
@@ -383,7 +410,7 @@ func (f *failover) cleanup(force bool) {
 		return
 	}
 
-	alive := make([]Recovery, 0)
+	alive := make([]*Recovery, 0)
 	if !force {
 		for _, b := range f.recoveries {
 			if !b.Expired() {

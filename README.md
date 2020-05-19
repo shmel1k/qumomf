@@ -64,6 +64,78 @@ Master election supports two modes:
 
 Election mode might be configured for each cluster.
 
+## Recovery hooks
+
+Hooks invoked through the recovery process via shell, in particular bash.
+
+These hooks are available:
+
+ - `PreFailover`: executed immediately before qumomf takes recovery action. Failure (non-zero exit code) of any of these processes aborts the recovery. Hint: this gives you the opportunity to abort recovery based on some internal state of your system.
+ - `PostSuccessfulFailover`: executed at the end of successful recovery.
+ - `PostUnsuccessfulFailover`: executed at the end of unsuccessful recovery.
+
+Any process command that starts with "&" will be executed asynchronously, and a failure for such process is ignored.
+
+Qumomf executes lists of commands sequentially, in order of definition.
+
+A naive implementation might look like:
+
+```yaml
+hooks:
+  shell: bash
+  pre_failover:
+    - "echo 'Will recover from {failureType} on {failureCluster}' >> /tmp/qumomf_recovery.log"
+  post_successful_failover:
+    - "echo 'Recovered from {failureType} on {failureCluster}. Set: {failureReplicaSetUUID}; Failed: {failedURI}; Successor: {successorURI}' >> /tmp/qumomf_recovery.log"
+  post_unsuccessful_failover:
+    - "echo 'Failed to recover from {failureType} on {failureCluster}. Set: {failureReplicaSetUUID}; Failed: {failedURI}' >> /tmp/qumomf_recovery.log"
+```
+
+### Hooks arguments and environment
+
+Qumomf provides all hooks with failure/recovery related information, such as the UUID/URI of the failed instance, 
+UUID/URI of promoted instance, type of failure, name of cluster, etc.
+
+This information is passed independently in two ways, and you may choose to use one or both:
+
+**Environment variables**:
+
+  - `QUM_FAILURE_TYPE`
+  - `QUM_FAILED_UUID`
+  - `QUM_FAILED_URI`
+  - `QUM_FAILURE_CLUSTER`
+  - `QUM_FAILURE_REPLICA_SET_UUID`
+  - `QUM_COUNT_FOLLOWERS`
+  - `QUM_COUNT_WORKING_FOLLOWERS`
+  - `QUM_COUNT_REPLICATING_FOLLOWERS`
+  - `QUM_COUNT_INCONSISTENT_VSHARD_CONF`
+  - `QUM_IS_SUCCESSFUL`
+    
+  And, if a recovery was successful:
+    
+  - `QUM_SUCCESSOR_UUID`
+  - `QUM_SUCCESSOR_URI`
+
+**Command line text replacement**. 
+
+Qumomf replaces the following tokens in your hook commands:
+
+  - `{failureType}`
+  - `{failedUUID}`
+  - `{failedURI}`
+  - `{failureCluster}`
+  - `{failureReplicaSetUUID}`
+  - `{countFollowers}`
+  - `{countWorkingFollowers}`
+  - `{countReplicatingFollowers}`
+  - `{countInconsistentVShardConf}`
+  - `{isSuccessful}`
+
+  And, if a recovery was a successful:
+
+  - `{successorUUID}`
+  - `{successorURI}`
+
 ## Runtime metrics
 
 Qumomf exports runtime metrics to Prometheus via `/metrics` endpoint.

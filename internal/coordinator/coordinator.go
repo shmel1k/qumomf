@@ -54,8 +54,10 @@ func (c *Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, glo
 	}, clusterLogger)
 	c.addShutdownTask(mon.Shutdown)
 
+	hooker := initHooker(globalCfg, clusterLogger)
 	elector := quorum.New(quorum.Mode(*cfg.ElectionMode))
 	failover := orchestrator.NewDefaultFailover(cluster, orchestrator.FailoverConfig{
+		Hooker:                      hooker,
 		Elector:                     elector,
 		ReplicaSetRecoveryBlockTime: globalCfg.Qumomf.ShardRecoveryBlockTime,
 		InstanceRecoveryBlockTime:   globalCfg.Qumomf.InstanceRecoveryBlockTime,
@@ -77,4 +79,15 @@ func (c *Coordinator) Shutdown() {
 
 func (c *Coordinator) addShutdownTask(task shutdownTask) {
 	c.shutdownQueue = append(c.shutdownQueue, task)
+}
+
+func initHooker(cfg *config.Config, logger zerolog.Logger) *orchestrator.Hooker {
+	hooksCfg := cfg.Qumomf.Hooks
+	hooker := orchestrator.NewHooker(hooksCfg.Shell, logger)
+
+	hooker.AddHook(orchestrator.HookPreFailover, hooksCfg.PreFailover...)
+	hooker.AddHook(orchestrator.HookPostSuccessfulFailover, hooksCfg.PostSuccessfulFailover...)
+	hooker.AddHook(orchestrator.HookPostUnsuccessfulFailover, hooksCfg.PostUnsuccessfulFailover...)
+
+	return hooker
 }

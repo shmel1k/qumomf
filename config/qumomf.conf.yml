@@ -27,6 +27,21 @@ qumomf:
   # Can be overwritten by cluster-specific options.
   elector: 'smart'
 
+  # Hooks invoked through the recovery process.
+  # These are arrays of commands invoked via shell, in particular bash.
+  hooks:
+    # Shell to use invoking hooks in format "shell -c <command>".
+    shell: bash
+    # PreFailover hooks executed before the recovery process.
+    pre_failover:
+      - "echo 'Will recover from {failureType} on {failureCluster}' >> /tmp/qumomf_recovery.log"
+    # PostSuccessfulFailover hooks executed after the successful recovery process.
+    post_successful_failover:
+      - "echo 'Recovered from {failureType} on {failureCluster}. Set: {failureReplicaSetUUID}; Failed: {failedURI}; Successor: {successorURI}' >> /tmp/qumomf_recovery.log"
+    # PostUnsuccessfulFailover hooks executed after the unsuccessful recovery process.
+    post_unsuccessful_failover:
+      - "echo 'Failed to recover from {failureType} on {failureCluster}. Set: {failureReplicaSetUUID}; Failed: {failedURI}' >> /tmp/qumomf_recovery.log"
+
 # Tarantool connection options.
 # Can be overwritten by cluster-specific options.
 connection:
