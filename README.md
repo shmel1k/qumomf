@@ -2,6 +2,17 @@
 
 Qumomf is a Tarantool vshard high availability tool which supports discovery and recovery.
 
+# Table of Contents
+
+  * [Discovery](#discovery)
+  * [Configuration](#configuration)
+     * [How to add a new cluster](#how-to-add-a-new-cluster)
+  * [Topology recovery](#topology-recovery)
+  * [Recovery hooks](#recovery-hooks)
+     * [Hooks arguments and environment](#hooks-arguments-and-environment)
+  * [API](#api)
+  * [Hacking](#hacking)
+
 ## Discovery
 
 Qumomf actively crawls through your topologies and analyzes them. 
@@ -140,9 +151,13 @@ Qumomf replaces the following tokens in your hook commands:
   - `{successorUUID}`
   - `{successorURI}`
 
-## Runtime metrics
+## API
 
-Qumomf exports runtime metrics to Prometheus via `/metrics` endpoint.
+Qumomf exposes several debug endpoints:
+
+- `/debug/metrics` - runtime and app metrics in Prometheus format,
+- `/debug/health` - health check,
+- `/debug/about` - the app version and build date. 
 
 ## Hacking
 
