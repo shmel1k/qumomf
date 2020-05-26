@@ -91,9 +91,9 @@ func initHTTPServer(port string) *http.Server {
 	}
 
 	// Init routing.
-	http.Handle("/metrics", promhttp.Handler())
-	http.Handle("/health", qumhttp.HealthHandler())
-	http.Handle("/about", qumhttp.AboutHandler(Version, BuildDate))
+	http.Handle("/debug/metrics", promhttp.Handler())
+	http.Handle("/debug/health", qumhttp.HealthHandler())
+	http.Handle("/debug/about", qumhttp.AboutHandler(Version, BuildDate))
 
 	return server
 }
