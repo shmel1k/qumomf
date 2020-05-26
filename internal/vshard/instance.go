@@ -88,6 +88,12 @@ type Instance struct {
 
 	// VShardFingerprint is a CRC32 hash code of the shard topology configuration.
 	VShardFingerprint uint64 `json:"vshard_fingerprint"`
+
+	// Priority helps to choose the best candidate during the failover using
+	// user promotion rules.
+	//
+	// If priority less than 0, instance will not participate in the master election.
+	Priority int `json:"priority"`
 }
 
 // InstanceIdent contains unique UUID and URI of the instance.

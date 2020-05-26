@@ -15,7 +15,7 @@ const (
 )
 
 var (
-	ErrNoAliveFollowers = errors.New("quorum: ReplicaSet does not have any alive followers")
+	ErrNoAliveFollowers = errors.New("quorum: replica set does not have any alive followers or all of them were excluded from the election")
 	ErrNoCandidateFound = errors.New("quorum: no available candidate found")
 )
 

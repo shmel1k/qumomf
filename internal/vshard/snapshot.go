@@ -5,6 +5,7 @@ type Snapshot struct {
 	Created     int64        `json:"created"`
 	Routers     []Router     `json:"routers"`
 	ReplicaSets []ReplicaSet `json:"replica_sets"`
+	priorities  map[string]int
 }
 
 func (s *Snapshot) Copy() Snapshot {
@@ -12,6 +13,7 @@ func (s *Snapshot) Copy() Snapshot {
 		Created:     s.Created,
 		Routers:     make([]Router, len(s.Routers)),
 		ReplicaSets: make([]ReplicaSet, len(s.ReplicaSets)),
+		priorities:  s.priorities,
 	}
 
 	copy(dst.Routers, s.Routers)
@@ -28,4 +30,20 @@ func (s *Snapshot) TopologyOf(uuid ReplicaSetUUID) ([]Instance, error) {
 	}
 
 	return []Instance{}, ErrReplicaSetNotFound
+}
+
+func (s *Snapshot) UpdatePriorities(priorities map[string]int) {
+	s.priorities = priorities
+
+	for i := range s.ReplicaSets {
+		set := &s.ReplicaSets[i]
+		for j := range set.Instances {
+			inst := &set.Instances[j]
+			if priority, ok := s.priorities[string(inst.UUID)]; ok {
+				inst.Priority = priority
+			} else {
+				inst.Priority = 0
+			}
+		}
+	}
 }

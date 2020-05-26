@@ -60,7 +60,11 @@ Master election supports two modes:
   - vshard configuration consistency (prefer replica which has the same configuration as master), 
   - which upstream status did replica have before the crash,
   - how replica is far from master comparing LSN to master LSN,
-  - last time when replica received data or heartbeat signal from master. 
+  - last time when replica received data or heartbeat signal from master,
+  - user promotion rules based on instance priorities.
+
+You can define your own promotion rules which will influence on master election during a failover.
+Each instance has a priority set via config. Negative priority excludes follower from the election process. 
 
 Election mode might be configured for each cluster.
 
