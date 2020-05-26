@@ -15,6 +15,7 @@ import (
 
 	"github.com/shmel1k/qumomf/internal/config"
 	"github.com/shmel1k/qumomf/internal/coordinator"
+	"github.com/shmel1k/qumomf/internal/qumhttp"
 )
 
 var (
@@ -81,11 +82,12 @@ func initHTTPServer(port string) *http.Server {
 	server := &http.Server{
 		Addr:         port,
 		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 35 * time.Second,
+		WriteTimeout: 5 * time.Second,
 	}
 
 	// Init routing.
 	http.Handle("/metrics", promhttp.Handler())
+	http.Handle("/health", qumhttp.HealthHandler())
 
 	return server
 }
