@@ -1,8 +1,13 @@
+BINARY=qumomf
+GIT_SUMMARY=`git describe --tags --dirty --always`
+BUILD_DATE=`date +%FT%T%z`
+LDFLAGS=-ldflags "-w -s -X main.Version=${GIT_SUMMARY} -X main.BuildDate=${BUILD_DATE}"
+
 all: build
 
 .PHONY: build
 build:
-	go build -o bin/qumomf cmd/qumomf/main.go
+	go build ${LDFLAGS} -o bin/${BINARY} cmd/qumomf/main.go
 
 .PHONY: run
 run: build
