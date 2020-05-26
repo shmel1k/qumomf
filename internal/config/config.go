@@ -78,6 +78,9 @@ type ClusterConfig struct {
 	// obtained from the replication configuration during the auto discovery.
 	OverrideURIRules map[string]string `yaml:"override_uri_rules,omitempty"`
 
+	// Priorities contains list of instances UUID and their priorities.
+	Priorities map[string]int `yaml:"priorities,omitempty"`
+
 	// Routers contains list of all cluster routers.
 	//
 	// All cluster nodes must share a common topology.

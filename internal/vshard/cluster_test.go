@@ -24,6 +24,7 @@ type tExpInst struct {
 	upstreamStatus    UpstreamStatus
 	upstreamPeer      string
 	replicationStatus ReplicationStatus
+	priority          int
 }
 
 func TestCluster_Discover(t *testing.T) {
@@ -58,6 +59,7 @@ func TestCluster_Discover(t *testing.T) {
 					readonly:          false,
 					hasUpstream:       false,
 					replicationStatus: StatusMaster,
+					priority:          0,
 				},
 				{
 					uuid:              "bd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1",
@@ -67,6 +69,7 @@ func TestCluster_Discover(t *testing.T) {
 					upstreamStatus:    UpstreamFollow,
 					upstreamPeer:      "qumomf@qumomf_1_s.ddk:3301",
 					replicationStatus: StatusFollow,
+					priority:          0,
 				},
 			},
 		},
@@ -80,6 +83,7 @@ func TestCluster_Discover(t *testing.T) {
 					readonly:          false,
 					hasUpstream:       false,
 					replicationStatus: StatusMaster,
+					priority:          0,
 				},
 				{
 					uuid:              "bd64dd00-161e-4c99-8b3c-d3c4635e18d2",
@@ -89,6 +93,7 @@ func TestCluster_Discover(t *testing.T) {
 					upstreamStatus:    UpstreamFollow,
 					upstreamPeer:      "qumomf@qumomf_2_s_1.ddk:3301",
 					replicationStatus: StatusFollow,
+					priority:          10,
 				},
 				{
 					uuid:              "cc4cfb9c-11d8-4810-84d2-66cfbebb0f6e",
@@ -98,6 +103,7 @@ func TestCluster_Discover(t *testing.T) {
 					upstreamStatus:    UpstreamFollow,
 					upstreamPeer:      "qumomf@qumomf_2_s_2.ddk:3301",
 					replicationStatus: StatusFollow,
+					priority:          5,
 				},
 			},
 		},
@@ -124,6 +130,7 @@ func TestCluster_Discover(t *testing.T) {
 			assert.Equal(t, expInst.uuid, inst.UUID)
 			assert.Equal(t, expInst.uri, inst.URI)
 			assert.Equal(t, expInst.readonly, inst.Readonly)
+			assert.Equal(t, expInst.priority, inst.Priority)
 			assert.True(t, inst.LastCheckValid)
 
 			upstream := inst.Upstream

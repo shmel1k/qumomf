@@ -6,6 +6,11 @@ import (
 	"github.com/shmel1k/qumomf/internal/vshard"
 )
 
+// delayDiffDelta represents the max diff between
+// delay values of the followers after which
+// they are not treated as almost identical.
+const delayDiffDelta = 0.5 // in seconds
+
 type smartElector struct {
 }
 
@@ -13,13 +18,14 @@ type smartElector struct {
 //  - compare vshard configuration consistency,
 //  - compare upstream status,
 //  - compare LSN behind the master,
-//  - compare when replica got last heartbeat signal or data from master.
+//  - compare when replica got last heartbeat signal or data from master,
+//  - user promotion rules based on instance priorities.
 func NewSmartElector() Elector {
 	return &smartElector{}
 }
 
 func (e *smartElector) ChooseMaster(set vshard.ReplicaSet) (vshard.InstanceUUID, error) {
-	followers := set.AliveFollowers()
+	followers := e.filter(set.AliveFollowers())
 	if len(followers) == 0 {
 		return "", ErrNoAliveFollowers
 	}
@@ -36,6 +42,18 @@ func (e *smartElector) ChooseMaster(set vshard.ReplicaSet) (vshard.InstanceUUID,
 
 func (e *smartElector) Mode() Mode {
 	return ModeSmart
+}
+
+func (e *smartElector) filter(instances []vshard.Instance) []vshard.Instance {
+	filtered := make([]vshard.Instance, 0, len(instances))
+	for i := range instances {
+		inst := &instances[i]
+		// Exclude all followers with negative priority.
+		if inst.Priority >= 0 {
+			filtered = append(filtered, *inst)
+		}
+	}
+	return filtered
 }
 
 // instanceSorter sorts instances by their priority to be a new master.
@@ -59,6 +77,7 @@ func (s *instanceSorter) Swap(i, j int) {
 	s.instances[i], s.instances[j] = s.instances[j], s.instances[i]
 }
 
+//nolint:gocyclo
 func (s *instanceSorter) Less(i, j int) bool {
 	left, right := s.instances[i], s.instances[j]
 
@@ -93,5 +112,18 @@ func (s *instanceSorter) Less(i, j int) bool {
 		return left.LSNBehindMaster < right.LSNBehindMaster
 	}
 
-	return left.StorageInfo.Replication.Delay < right.StorageInfo.Replication.Delay
+	d1 := left.StorageInfo.Replication.Delay
+	d2 := right.StorageInfo.Replication.Delay
+
+	if left.Priority != right.Priority && inDelta(d1, d2, delayDiffDelta) {
+		// If followers are almost equal, use user promotion rules.
+		return left.Priority > right.Priority
+	}
+
+	return d1 < d2
+}
+
+func inDelta(d1, d2, delta float64) bool {
+	diff := d1 - d2
+	return diff >= -delta && diff <= delta
 }

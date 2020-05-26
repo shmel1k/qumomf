@@ -84,6 +84,11 @@ func TestSetup_ValidPath(t *testing.T) {
 			},
 			ReadOnly:     newBool(true),
 			ElectionMode: newString("delay"),
+			Priorities: map[string]int{
+				"bd64dd00-161e-4c99-8b3c-d3c4635e18d2": 10,
+				"cc4cfb9c-11d8-4810-84d2-66cfbebb0f6e": 5,
+				"a3ef657e-eb9a-4730-b420-7ea78d52797d": -1,
+			},
 			Routers: []RouterConfig{
 				{
 					Name: "sandbox2-router1",

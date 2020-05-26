@@ -117,6 +117,7 @@ func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
 		},
 		readOnly: *cfg.ReadOnly,
 	}
+	c.snapshot.UpdatePriorities(cfg.Priorities)
 
 	routers := make([]Router, 0, len(cfg.Routers))
 	for _, r := range cfg.Routers {
@@ -133,6 +134,12 @@ func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
 
 func (c *Cluster) SetLogger(logger zerolog.Logger) {
 	c.logger = logger
+}
+
+func (c *Cluster) SetPriorities(priorities map[string]int) {
+	c.mutex.Lock()
+	c.snapshot.UpdatePriorities(priorities)
+	c.mutex.Unlock()
 }
 
 func (c *Cluster) Dump() string {
@@ -367,6 +374,7 @@ func (c *Cluster) Discover() {
 
 	c.mutex.Lock()
 	if c.snapshot.Created <= ns.Created {
+		ns.UpdatePriorities(c.snapshot.priorities)
 		c.snapshot = ns
 	}
 	c.mutex.Unlock()
