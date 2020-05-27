@@ -1,10 +1,12 @@
-name: Go
+name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - 'master'
   pull_request:
-    branches: [ master ]
+    branches:
+      - '*'
 
 jobs:
 
@@ -45,3 +47,8 @@ jobs:
 
       - name: Lint
         run: $GITHUB_WORKSPACE/golangci-lint run
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          args: release --snapshot --skip-publish --rm-dist
