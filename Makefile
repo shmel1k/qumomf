@@ -1,13 +1,18 @@
 BINARY=qumomf
-GIT_SUMMARY=`git describe --tags --dirty --always`
+VERSION=`git describe --tags --dirty --always`
+COMMIT=`git rev-parse HEAD`
 BUILD_DATE=`date +%FT%T%z`
-LDFLAGS=-ldflags "-w -s -X main.Version=${GIT_SUMMARY} -X main.BuildDate=${BUILD_DATE}"
+LDFLAGS=-ldflags "-w -s -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.buildDate=${BUILD_DATE}"
 
 all: build
 
 .PHONY: build
 build:
 	go build ${LDFLAGS} -o bin/${BINARY} cmd/qumomf/main.go
+
+.PHONY: release
+release:
+	goreleaser build --snapshot --rm-dist
 
 .PHONY: run
 run: build

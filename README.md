@@ -1,3 +1,5 @@
+![](https://github.com/actions/qumomf/workflows/goreleaser/badge.svg)
+
 # Qumomf
 
 Qumomf is a Tarantool vshard high availability tool which supports discovery and recovery.

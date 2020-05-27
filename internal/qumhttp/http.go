@@ -17,12 +17,14 @@ func HealthHandler() http.Handler {
 	})
 }
 
-func AboutHandler(version, buildDate string) http.Handler {
+func AboutHandler(version, commit, buildDate string) http.Handler {
 	about := struct {
 		Version string `json:"version"`
+		Commit  string `json:"commit"`
 		Build   string `json:"build"`
 	}{
 		Version: version,
+		Commit:  commit,
 		Build:   buildDate,
 	}
 

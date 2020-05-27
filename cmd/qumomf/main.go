@@ -19,8 +19,9 @@ import (
 )
 
 var (
-	Version   string
-	BuildDate string
+	version   = "dev"
+	commit    = "none"
+	buildDate = "unknown"
 )
 
 var (
@@ -37,14 +38,14 @@ func main() {
 	logger := initLogger(cfg)
 	server := initHTTPServer(cfg.Qumomf.Port)
 
-	logger.Info().Msg("Starting qumomf")
+	logger.Info().Msgf("Starting qumomf %s, commit %s, built at %s", version, commit, buildDate)
 
 	go func() {
 		logger.Info().Msgf("Listening on %s", cfg.Qumomf.Port)
 
 		err = server.ListenAndServe()
 		if err != http.ErrServerClosed {
-			logger.Err(err).Msg("Failed to listen HTTP server")
+			logger.Fatal().Err(err).Msg("Failed to listen HTTP server")
 		}
 	}()
 
@@ -93,7 +94,7 @@ func initHTTPServer(port string) *http.Server {
 	// Init routing.
 	http.Handle("/debug/metrics", promhttp.Handler())
 	http.Handle("/debug/health", qumhttp.HealthHandler())
-	http.Handle("/debug/about", qumhttp.AboutHandler(Version, BuildDate))
+	http.Handle("/debug/about", qumhttp.AboutHandler(version, commit, buildDate))
 
 	return server
 }

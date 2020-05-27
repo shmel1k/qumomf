@@ -43,5 +43,5 @@ jobs:
         run: |
           curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $GITHUB_WORKSPACE v1.23.6 
 
-      - name: run linters
+      - name: Lint
         run: $GITHUB_WORKSPACE/golangci-lint run
