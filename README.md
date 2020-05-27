@@ -1,5 +1,5 @@
 ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/shmel1k/qumomf?sort=semver&style=for-the-badge)
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/shmel1k/qumomf/go?style=for-the-badge)
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/shmel1k/qumomf/CI?style=for-the-badge)
 
 # Qumomf
 
