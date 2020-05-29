@@ -21,11 +21,18 @@ qumomf:
   # Similar to the shard_recovery_block_time option but defines recovery block period
   # only for a single instance. Used during the vshard configuration recovery.
   instance_recovery_block_time: '10m'
+
   # How should qumomf choose a new master during the failover.
-  # Available options: delay, smart.
-  # See README for description.
+  # Available options: idle, smart.
+  # See README for the description.
   # Can be overwritten by cluster-specific options.
   elector: 'smart'
+  # On crash recovery, followers that are lagging more than given LSN must not participate in the election.
+  # Value of 0 disables this feature.
+  reasonable_follower_lsn_lag: 500
+  # On crash recovery, followers that are lagging more than given duration must not participate in the election.
+  # Value of 0 disables this feature.
+  reasonable_follower_idle: '1m'
 
   # Hooks invoked through the recovery process.
   # These are arrays of commands invoked via shell, in particular bash.
@@ -78,7 +85,7 @@ clusters:
         addr: '127.0.0.1:9301'
 
   qumomf_sandbox_2:
-    elector: 'delay'
+    elector: 'idle'
 
     connection:
       user: 'tnt'

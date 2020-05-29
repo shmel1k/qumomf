@@ -11,6 +11,8 @@ Qumomf is a Tarantool vshard high availability tool which supports discovery and
   * [Configuration](#configuration)
      * [How to add a new cluster](#how-to-add-a-new-cluster)
   * [Topology recovery](#topology-recovery)
+     * [Idle](#idle)
+     * [Smart](#smart)
   * [Recovery hooks](#recovery-hooks)
      * [Hooks arguments and environment](#hooks-arguments-and-environment)
   * [API](#api)
@@ -67,20 +69,34 @@ Start qumomf, and it will discover all clusters defined in the configuration.
 Just now qumomf supports only automated master recovery.
 It is a configurable option and can be disabled completely or for a cluster via configuration.
 
-Master election supports two modes:
+Master election supports two modes: `idle` and `smart`.
+Election mode might be configured for each cluster independently.
 
-1. `delay` - naive and simple elector which finds alive replica last communicated to the failed master (received data or heartbeat signal).
-2. `smart` - elector tries to involve as many metrics as can:
+Both electors supports those options:
+
+  - `reasonable_follower_lsn_lag` - on crash recovery, followers that are lagging 
+     more than given LSN must not participate in the election.
+  - `reasonable_follower_idle` - on crash recovery, followers that are lagging 
+     more than given duration must not participate in the election.
+
+Value of 0 disables this features.
+
+### Idle
+
+Naive and simple elector which finds alive replica last communicated to the failed master (received data or heartbeat signal).
+Followers with the negative priority will be excluded from the master election.
+
+### Smart
+
+Elector tries to involve as many metrics as can:
   - vshard configuration consistency (prefer replica which has the same configuration as master), 
   - which upstream status did replica have before the crash,
-  - how replica is far from master comparing LSN to master LSN,
-  - last time when replica received data or heartbeat signal from master,
-  - user promotion rules based on instance priorities.
+  - how replica is far from the master comparing LSN to the master LSN,
+  - last time when replica received data or heartbeat signal from the master,
+  - user promotion rules based on the instance priorities.
 
 You can define your own promotion rules which will influence on master election during a failover.
 Each instance has a priority set via config. Negative priority excludes follower from the election process. 
-
-Election mode might be configured for each cluster.
 
 ## Recovery hooks
 

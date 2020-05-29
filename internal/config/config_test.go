@@ -30,6 +30,8 @@ func TestSetup_ValidPath(t *testing.T) {
 	assert.Equal(t, 5*time.Second, cfg.Qumomf.ClusterRecoveryTime)
 	assert.Equal(t, 30*time.Minute, cfg.Qumomf.ShardRecoveryBlockTime)
 	assert.Equal(t, 10*time.Minute, cfg.Qumomf.InstanceRecoveryBlockTime)
+	assert.Equal(t, int64(500), cfg.Qumomf.ReasonableFollowerLSNLag)
+	assert.Equal(t, 1*time.Minute, cfg.Qumomf.ReasonableFollowerIdle)
 
 	hooks := cfg.Qumomf.Hooks
 	assert.Equal(t, "bash", hooks.Shell)
@@ -83,7 +85,7 @@ func TestSetup_ValidPath(t *testing.T) {
 				RequestTimeout: newDuration(10 * time.Second),
 			},
 			ReadOnly:     newBool(true),
-			ElectionMode: newString("delay"),
+			ElectionMode: newString("idle"),
 			Priorities: map[string]int{
 				"bd64dd00-161e-4c99-8b3c-d3c4635e18d2": 10,
 				"cc4cfb9c-11d8-4810-84d2-66cfbebb0f6e": 5,

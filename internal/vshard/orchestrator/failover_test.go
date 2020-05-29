@@ -18,14 +18,23 @@ var (
 	tests = []struct {
 		name string
 		mode quorum.Mode
+		opts quorum.Options
 	}{
 		{
-			name: "DelayElector",
-			mode: quorum.ModeDelay,
+			name: "IdleElector",
+			mode: quorum.ModeIdle,
+			opts: quorum.Options{
+				ReasonableFollowerLSNLag: 10,
+				ReasonableFollowerIdle:   1,
+			},
 		},
 		{
 			name: "SmartElector",
 			mode: quorum.ModeSmart,
+			opts: quorum.Options{
+				ReasonableFollowerLSNLag: 10,
+				ReasonableFollowerIdle:   1,
+			},
 		},
 	}
 )
@@ -73,7 +82,7 @@ func (s *failoverTestSuite) Test_failover_promoteFollowerToMaster() {
 		tt := tt
 		s.Run(tt.name, func() {
 			hooker := NewBashHooker(s.logger)
-			elector := quorum.New(tt.mode)
+			elector := quorum.New(tt.mode, tt.opts)
 			s.failover = NewDefaultFailover(s.cluster, FailoverConfig{
 				Hooker:                      hooker,
 				Elector:                     elector,
@@ -165,7 +174,7 @@ func (s *failoverTestSuite) Test_failover_applyFollowerRoleToCoMasters() {
 		tt := tt
 		s.Run(tt.name, func() {
 			hooker := NewBashHooker(s.logger)
-			elector := quorum.New(tt.mode)
+			elector := quorum.New(tt.mode, tt.opts)
 			s.failover = NewDefaultFailover(s.cluster, FailoverConfig{
 				Hooker:                      hooker,
 				Elector:                     elector,

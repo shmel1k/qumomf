@@ -150,7 +150,6 @@ func TestParseInstanceInfo(t *testing.T) {
 
 	replication := &storage.Replication
 	assert.Equal(t, StatusFollow, replication.Status)
-	assert.InDelta(t, float64(0), replication.Delay, float64(1))
 
 	assert.Empty(t, storage.Alerts)
 

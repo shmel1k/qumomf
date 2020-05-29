@@ -36,5 +36,5 @@ func (s *InstanceFailoverSorter) Less(i, j int) bool {
 		return false
 	}
 	// Prefer most up to date replica.
-	return left.StorageInfo.Replication.Delay < right.StorageInfo.Replication.Delay
+	return left.Idle() < right.Idle()
 }

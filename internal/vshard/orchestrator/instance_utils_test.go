@@ -14,10 +14,13 @@ func TestInstanceFailoverSorter(t *testing.T) {
 		{
 			UUID:           "replica_1",
 			LastCheckValid: false,
+			Upstream: &vshard.Upstream{
+				Status: vshard.UpstreamFollow,
+				Idle:   0,
+			},
 			StorageInfo: vshard.StorageInfo{
 				Replication: vshard.Replication{
 					Status: "",
-					Delay:  0,
 				},
 				Alerts: nil,
 			},
@@ -25,10 +28,13 @@ func TestInstanceFailoverSorter(t *testing.T) {
 		{
 			UUID:           "replica_2",
 			LastCheckValid: true,
+			Upstream: &vshard.Upstream{
+				Status: vshard.UpstreamFollow,
+				Idle:   0.032492704689502716,
+			},
 			StorageInfo: vshard.StorageInfo{
 				Replication: vshard.Replication{
 					Status: vshard.StatusDisconnected,
-					Delay:  0.032492704689502716,
 				},
 				Alerts: []vshard.Alert{
 					{
@@ -41,10 +47,13 @@ func TestInstanceFailoverSorter(t *testing.T) {
 		{
 			UUID:           "replica_3",
 			LastCheckValid: true,
+			Upstream: &vshard.Upstream{
+				Status: vshard.UpstreamFollow,
+				Idle:   3.479430440813303,
+			},
 			StorageInfo: vshard.StorageInfo{
 				Replication: vshard.Replication{
 					Status: vshard.StatusDisconnected,
-					Delay:  3.479430440813303,
 				},
 				Alerts: []vshard.Alert{
 					{
@@ -57,10 +66,13 @@ func TestInstanceFailoverSorter(t *testing.T) {
 		{
 			UUID:           "replica_4",
 			LastCheckValid: true,
+			Upstream: &vshard.Upstream{
+				Status: vshard.UpstreamFollow,
+				Idle:   0.079430440813303,
+			},
 			StorageInfo: vshard.StorageInfo{
 				Replication: vshard.Replication{
 					Status: vshard.StatusFollow,
-					Delay:  0.079430440813303,
 				},
 				Alerts: nil,
 			},
@@ -68,10 +80,13 @@ func TestInstanceFailoverSorter(t *testing.T) {
 		{
 			UUID:           "replica_5",
 			LastCheckValid: true,
+			Upstream: &vshard.Upstream{
+				Status: vshard.UpstreamFollow,
+				Idle:   0,
+			},
 			StorageInfo: vshard.StorageInfo{
 				Replication: vshard.Replication{
 					Status: vshard.StatusMaster,
-					Delay:  0,
 				},
 				Alerts: nil,
 			},

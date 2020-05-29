@@ -37,6 +37,7 @@ func Test_smartElector_ChooseMaster(t *testing.T) {
 						VShardFingerprint: 100,
 						Upstream: &vshard.Upstream{
 							Status: vshard.UpstreamFollow,
+							Idle:   0.05,
 						},
 						Downstream: &vshard.Downstream{
 							Status: vshard.DownstreamFollow,
@@ -44,7 +45,6 @@ func Test_smartElector_ChooseMaster(t *testing.T) {
 						StorageInfo: vshard.StorageInfo{
 							Replication: vshard.Replication{
 								Status: vshard.StatusFollow,
-								Delay:  0.05,
 							},
 						},
 						Priority: 100,
@@ -56,6 +56,7 @@ func Test_smartElector_ChooseMaster(t *testing.T) {
 						VShardFingerprint: 100,
 						Upstream: &vshard.Upstream{
 							Status: vshard.UpstreamFollow,
+							Idle:   0.05,
 						},
 						Downstream: &vshard.Downstream{
 							Status: vshard.DownstreamFollow,
@@ -63,7 +64,6 @@ func Test_smartElector_ChooseMaster(t *testing.T) {
 						StorageInfo: vshard.StorageInfo{
 							Replication: vshard.Replication{
 								Status: vshard.StatusFollow,
-								Delay:  0.05,
 							},
 						},
 						Priority: 10,
@@ -75,6 +75,7 @@ func Test_smartElector_ChooseMaster(t *testing.T) {
 						VShardFingerprint: 100,
 						Upstream: &vshard.Upstream{
 							Status: vshard.UpstreamFollow,
+							Idle:   0.1,
 						},
 						Downstream: &vshard.Downstream{
 							Status: vshard.DownstreamFollow,
@@ -82,7 +83,6 @@ func Test_smartElector_ChooseMaster(t *testing.T) {
 						StorageInfo: vshard.StorageInfo{
 							Replication: vshard.Replication{
 								Status: vshard.StatusFollow,
-								Delay:  0.1,
 							},
 						},
 					},
@@ -93,6 +93,7 @@ func Test_smartElector_ChooseMaster(t *testing.T) {
 						VShardFingerprint: 10,
 						Upstream: &vshard.Upstream{
 							Status: vshard.UpstreamFollow,
+							Idle:   0.0001,
 						},
 						Downstream: &vshard.Downstream{
 							Status: vshard.DownstreamFollow,
@@ -100,7 +101,6 @@ func Test_smartElector_ChooseMaster(t *testing.T) {
 						StorageInfo: vshard.StorageInfo{
 							Replication: vshard.Replication{
 								Status: vshard.StatusFollow,
-								Delay:  0.0001,
 							},
 						},
 					},
@@ -129,6 +129,40 @@ func Test_smartElector_ChooseMaster(t *testing.T) {
 							Status: vshard.UpstreamDisconnected,
 						},
 					},
+					{ // too far from the master
+						UUID:            "3",
+						LastCheckValid:  true,
+						LSNBehindMaster: 1000,
+						Upstream: &vshard.Upstream{
+							Status: vshard.UpstreamFollow,
+							Idle:   0.1,
+						},
+						Downstream: &vshard.Downstream{
+							Status: vshard.DownstreamFollow,
+						},
+						StorageInfo: vshard.StorageInfo{
+							Replication: vshard.Replication{
+								Status: vshard.StatusFollow,
+							},
+						},
+					},
+					{ // too far from the master
+						UUID:            "4",
+						LastCheckValid:  true,
+						LSNBehindMaster: 1,
+						Upstream: &vshard.Upstream{
+							Status: vshard.UpstreamFollow,
+							Idle:   10,
+						},
+						Downstream: &vshard.Downstream{
+							Status: vshard.DownstreamFollow,
+						},
+						StorageInfo: vshard.StorageInfo{
+							Replication: vshard.Replication{
+								Status: vshard.StatusFollow,
+							},
+						},
+					},
 				},
 			},
 			expectedErr: ErrNoAliveFollowers,
@@ -142,7 +176,10 @@ func Test_smartElector_ChooseMaster(t *testing.T) {
 		},
 	}
 
-	e := NewSmartElector()
+	e := NewSmartElector(Options{
+		ReasonableFollowerLSNLag: 100,
+		ReasonableFollowerIdle:   5,
+	})
 
 	for _, v := range testData {
 		vt := v

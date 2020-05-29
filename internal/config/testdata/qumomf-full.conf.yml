@@ -6,7 +6,10 @@ qumomf:
   cluster_recovery_time: '5s'
   shard_recovery_block_time: '30m'
   instance_recovery_block_time: '10m'
+
   elector: 'smart'
+  reasonable_follower_lsn_lag: 500
+  reasonable_follower_idle: '1m'
 
   hooks:
     shell: bash
@@ -41,7 +44,7 @@ clusters:
         uuid: 'a3ef657e-eb9a-4730-b420-7ea78d52797d'
 
   qumomf_sandbox_2:
-    elector: 'delay'
+    elector: 'idle'
 
     connection:
       user: 'tnt'

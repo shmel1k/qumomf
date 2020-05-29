@@ -6,12 +6,13 @@ import (
 	"github.com/shmel1k/qumomf/internal/vshard"
 )
 
-// delayDiffDelta represents the max diff between
-// delay values of the followers after which
+// idleDiffDelta represents the max diff between
+// idle values of the followers after which
 // they are not treated as almost identical.
-const delayDiffDelta = 0.5 // in seconds
+const idleDiffDelta = 0.5 // in seconds
 
 type smartElector struct {
+	opts Options
 }
 
 // NewSmartElector returns a new elector based on rules:
@@ -20,12 +21,14 @@ type smartElector struct {
 //  - compare LSN behind the master,
 //  - compare when replica got last heartbeat signal or data from master,
 //  - user promotion rules based on instance priorities.
-func NewSmartElector() Elector {
-	return &smartElector{}
+func NewSmartElector(opts Options) Elector {
+	return &smartElector{
+		opts: opts,
+	}
 }
 
 func (e *smartElector) ChooseMaster(set vshard.ReplicaSet) (vshard.InstanceUUID, error) {
-	followers := e.filter(set.AliveFollowers())
+	followers := filter(set.AliveFollowers(), e.opts)
 	if len(followers) == 0 {
 		return "", ErrNoAliveFollowers
 	}
@@ -42,18 +45,6 @@ func (e *smartElector) ChooseMaster(set vshard.ReplicaSet) (vshard.InstanceUUID,
 
 func (e *smartElector) Mode() Mode {
 	return ModeSmart
-}
-
-func (e *smartElector) filter(instances []vshard.Instance) []vshard.Instance {
-	filtered := make([]vshard.Instance, 0, len(instances))
-	for i := range instances {
-		inst := &instances[i]
-		// Exclude all followers with negative priority.
-		if inst.Priority >= 0 {
-			filtered = append(filtered, *inst)
-		}
-	}
-	return filtered
 }
 
 // instanceSorter sorts instances by their priority to be a new master.
@@ -112,10 +103,10 @@ func (s *instanceSorter) Less(i, j int) bool {
 		return left.LSNBehindMaster < right.LSNBehindMaster
 	}
 
-	d1 := left.StorageInfo.Replication.Delay
-	d2 := right.StorageInfo.Replication.Delay
+	d1 := left.Idle()
+	d2 := right.Idle()
 
-	if left.Priority != right.Priority && inDelta(d1, d2, delayDiffDelta) {
+	if left.Priority != right.Priority && inDelta(d1, d2, idleDiffDelta) {
 		// If followers are almost equal, use user promotion rules.
 		return left.Priority > right.Priority
 	}
