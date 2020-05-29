@@ -173,6 +173,14 @@ func (i *Instance) CriticalLevel() HealthLevel {
 	return HealthLevelUnknown
 }
 
+func (i *Instance) Idle() float64 {
+	if i.Upstream == nil {
+		return 0
+	}
+
+	return i.Upstream.Idle
+}
+
 // InstanceInfo is a helper structure contains
 // instance info in custom format.
 type InstanceInfo struct {
@@ -192,10 +200,6 @@ type StorageInfo struct {
 
 type Replication struct {
 	Status ReplicationStatus `json:"status"`
-
-	// Delay might be the lag or idle depends on the replication status.
-	// Tarantool returns idle when replication is broken otherwise the lag.
-	Delay float64 `json:"delay"`
 }
 
 type InstanceBucket struct {

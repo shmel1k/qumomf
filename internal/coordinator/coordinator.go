@@ -55,7 +55,10 @@ func (c *Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, glo
 	c.addShutdownTask(mon.Shutdown)
 
 	hooker := initHooker(globalCfg, clusterLogger)
-	elector := quorum.New(quorum.Mode(*cfg.ElectionMode))
+	elector := quorum.New(quorum.Mode(*cfg.ElectionMode), quorum.Options{
+		ReasonableFollowerLSNLag: globalCfg.Qumomf.ReasonableFollowerLSNLag,
+		ReasonableFollowerIdle:   globalCfg.Qumomf.ReasonableFollowerIdle.Seconds(),
+	})
 	failover := orchestrator.NewDefaultFailover(cluster, orchestrator.FailoverConfig{
 		Hooker:                      hooker,
 		Elector:                     elector,

@@ -285,19 +285,6 @@ func parseStorageInfo(dt container) (StorageInfo, error) {
 	if err != nil {
 		return StorageInfo{}, err
 	}
-	delay := float64(0)
-	if _, ok := replication["lag"]; ok {
-		delay, err = replication.getFloat64("lag")
-		if err != nil {
-			return StorageInfo{}, err
-		}
-	}
-	if _, ok := replication["idle"]; ok {
-		delay, err = replication.getFloat64("idle")
-		if err != nil {
-			return StorageInfo{}, err
-		}
-	}
 	replStatus, err := replication.getString("status")
 	if err != nil {
 		return StorageInfo{}, err
@@ -312,7 +299,6 @@ func parseStorageInfo(dt container) (StorageInfo, error) {
 		Status: HealthCode(setStatus),
 		Replication: Replication{
 			Status: ReplicationStatus(replStatus),
-			Delay:  delay,
 		},
 		Bucket: bucket,
 		Alerts: alerts,

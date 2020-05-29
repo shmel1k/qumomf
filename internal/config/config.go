@@ -23,6 +23,8 @@ const (
 	defaultShellCommand              = "bash"
 	defaultHookTimeout               = 5 * time.Second
 	defaultAsyncHookTimeout          = 10 * time.Minute
+	defaultMaxFollowerLSNLag         = 1000
+	defaultMaxFollowerIdle           = 5 * time.Minute
 )
 
 type Config struct {
@@ -36,6 +38,8 @@ type Config struct {
 		ShardRecoveryBlockTime    time.Duration `yaml:"shard_recovery_block_time"`
 		InstanceRecoveryBlockTime time.Duration `yaml:"instance_recovery_block_time"`
 		ElectionMode              string        `yaml:"elector"`
+		ReasonableFollowerLSNLag  int64         `yaml:"reasonable_follower_lsn_lag"`
+		ReasonableFollowerIdle    time.Duration `yaml:"reasonable_follower_idle"`
 		Hooks                     struct {
 			Shell                    string        `yaml:"shell"`
 			PreFailover              []string      `yaml:"pre_failover"`
@@ -141,6 +145,8 @@ func (c *Config) withDefaults() {
 	base.ShardRecoveryBlockTime = defaultShardRecoveryBlockTime
 	base.InstanceRecoveryBlockTime = defaultInstanceRecoveryBlockTime
 	base.ElectionMode = defaultElectorType
+	base.ReasonableFollowerLSNLag = defaultMaxFollowerLSNLag
+	base.ReasonableFollowerIdle = defaultMaxFollowerIdle
 	base.Hooks.Shell = defaultShellCommand
 	base.Hooks.Timeout = defaultHookTimeout
 	base.Hooks.TimeoutAsync = defaultAsyncHookTimeout

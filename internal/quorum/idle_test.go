@@ -8,7 +8,7 @@ import (
 	"github.com/shmel1k/qumomf/internal/vshard"
 )
 
-func TestDelayElector(t *testing.T) {
+func TestIdleElector(t *testing.T) {
 	var testData = []struct {
 		name         string
 		set          vshard.ReplicaSet
@@ -33,6 +33,7 @@ func TestDelayElector(t *testing.T) {
 						LastCheckValid: true,
 						Upstream: &vshard.Upstream{
 							Status: vshard.UpstreamFollow,
+							Idle:   0.05,
 						},
 						Downstream: &vshard.Downstream{
 							Status: vshard.DownstreamFollow,
@@ -40,7 +41,6 @@ func TestDelayElector(t *testing.T) {
 						StorageInfo: vshard.StorageInfo{
 							Replication: vshard.Replication{
 								Status: vshard.StatusFollow,
-								Delay:  0.05,
 							},
 						},
 					},
@@ -49,6 +49,7 @@ func TestDelayElector(t *testing.T) {
 						LastCheckValid: true,
 						Upstream: &vshard.Upstream{
 							Status: vshard.UpstreamFollow,
+							Idle:   0.1,
 						},
 						Downstream: &vshard.Downstream{
 							Status: vshard.DownstreamFollow,
@@ -56,7 +57,6 @@ func TestDelayElector(t *testing.T) {
 						StorageInfo: vshard.StorageInfo{
 							Replication: vshard.Replication{
 								Status: vshard.StatusFollow,
-								Delay:  0.1,
 							},
 						},
 					},
@@ -84,6 +84,40 @@ func TestDelayElector(t *testing.T) {
 							Status: vshard.UpstreamDisconnected,
 						},
 					},
+					{ // too far from the master
+						UUID:            "3",
+						LastCheckValid:  true,
+						LSNBehindMaster: 1000,
+						Upstream: &vshard.Upstream{
+							Status: vshard.UpstreamFollow,
+							Idle:   0.1,
+						},
+						Downstream: &vshard.Downstream{
+							Status: vshard.DownstreamFollow,
+						},
+						StorageInfo: vshard.StorageInfo{
+							Replication: vshard.Replication{
+								Status: vshard.StatusFollow,
+							},
+						},
+					},
+					{ // too far from the master
+						UUID:            "4",
+						LastCheckValid:  true,
+						LSNBehindMaster: 1,
+						Upstream: &vshard.Upstream{
+							Status: vshard.UpstreamFollow,
+							Idle:   10,
+						},
+						Downstream: &vshard.Downstream{
+							Status: vshard.DownstreamFollow,
+						},
+						StorageInfo: vshard.StorageInfo{
+							Replication: vshard.Replication{
+								Status: vshard.StatusFollow,
+							},
+						},
+					},
 				},
 			},
 			expectedErr: ErrNoAliveFollowers,
@@ -97,7 +131,10 @@ func TestDelayElector(t *testing.T) {
 		},
 	}
 
-	e := NewDelayElector()
+	e := NewIdleElector(Options{
+		ReasonableFollowerLSNLag: 100,
+		ReasonableFollowerIdle:   5,
+	})
 
 	for _, v := range testData {
 		vt := v
