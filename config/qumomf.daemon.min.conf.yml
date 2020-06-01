@@ -1,0 +1,32 @@
+qumomf:
+  port: ':8080'
+  log_level: "debug"
+  enable_syslog: true
+  readonly: true
+  cluster_discovery_time: '5s'
+  cluster_recovery_time: '1s'
+  shard_recovery_block_time: '30m'
+  instance_recovery_block_time: '10m'
+
+  elector: 'smart'
+  reasonable_follower_lsn_lag: 500
+  reasonable_follower_idle: '1m'
+
+  hooks:
+    shell: bash
+    timeout: 5s
+    timeout_async: 10m
+    pre_failover:
+      - "echo 'Will recover from {failureType} on {failureCluster}' >> /tmp/qumomf_recovery.log"
+    post_successful_failover:
+      - "echo 'Recovered from {failureType} on {failureCluster}. Set: {failureReplicaSetUUID}; Failed: {failedURI}; Successor: {successorURI}' >> /tmp/qumomf_recovery.log"
+    post_unsuccessful_failover:
+      - "echo 'Failed to recover from {failureType} on {failureCluster}. Set: {failureReplicaSetUUID}; Failed: {failedURI}' >> /tmp/qumomf_recovery.log"
+
+connection:
+  user: 'qumomf'
+  password: 'qumomf'
+  connect_timeout: '500ms'
+  request_timeout: '1s'
+
+clusters: ~

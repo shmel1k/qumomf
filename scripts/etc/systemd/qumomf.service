@@ -1,0 +1,13 @@
+[Unit]
+Description=qumomf: Tarantool vshard HA tool supports auto discovery and recovery.
+Documentation=https://github.com/shmel1k/qumomf
+After=syslog.target network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/usr/local/bin
+ExecStart=/usr/local/bin/qumomf -config /etc/qumomf/conf.yml
+TimeoutSec=30
+
+[Install]
+WantedBy=multi-user.target

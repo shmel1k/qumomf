@@ -28,7 +28,36 @@ checksum:
   algorithm: sha256
 
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  name_template: "{{ .Tag }}-SNAPSHOT-{{.ShortCommit}}"
 
 changelog:
   skip: true
+
+nfpms:
+  - id: default
+    package_name: qumomf
+
+    vendor: citymobil
+    homepage: https://github.com/shmel1k/qumomf
+    description: Tarantool vshard HA tool supports auto discovery and recovery
+    license: MIT
+
+    formats:
+      - deb
+      - rpm
+
+    dependencies: ~
+    recommends: ~
+    suggests: ~
+    conflicts: ~
+
+    bindir: /usr/local/bin
+
+    epoch: 1
+    release: 1
+
+    files:
+      "scripts/etc/systemd/**": "/etc/systemd/system"
+
+    config_files:
+      "config/qumomf.daemon.min.conf.yml": "/etc/qumomf/conf.yml"
