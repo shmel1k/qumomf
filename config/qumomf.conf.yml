@@ -4,6 +4,8 @@ qumomf:
   # Verbose level of logging: trace, debug, info, warn, error, fatal, panic.
   # To disable logging, pass an empty string.
   log_level: "debug"
+  # Write to the local syslog daemon as well as to stdout.
+  enable_syslog: false
   # Indicates whether qumomf should run in the readonly mode:
   # no auto failover will be executed.
   # Can be overwritten by cluster-specific options.

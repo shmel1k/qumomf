@@ -1,6 +1,7 @@
 qumomf:
   port: ':8080'
   log_level: "debug"
+  enable_syslog: true
   readonly: true
   cluster_discovery_time: '60s'
   cluster_recovery_time: '5s'
