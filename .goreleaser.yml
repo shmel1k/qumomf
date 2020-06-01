@@ -38,6 +38,7 @@ nfpms:
     package_name: qumomf
 
     vendor: citymobil
+    maintainer: Pavel Parshin <pparshin@city-mobil.ru>, Aleksandr Petrukhin <a.petrukhin@city-mobil.ru>
     homepage: https://github.com/shmel1k/qumomf
     description: Tarantool vshard HA tool supports auto discovery and recovery
     license: MIT
