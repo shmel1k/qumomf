@@ -32,6 +32,7 @@ type Config struct {
 	Qumomf struct {
 		Port                      string        `yaml:"port"`
 		LogLevel                  string        `yaml:"log_level"`
+		EnableSysLog              bool          `yaml:"enable_syslog"`
 		ReadOnly                  bool          `yaml:"readonly"`
 		ClusterDiscoveryTime      time.Duration `yaml:"cluster_discovery_time"`
 		ClusterRecoveryTime       time.Duration `yaml:"cluster_recovery_time"`

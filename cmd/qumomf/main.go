@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"log/syslog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -85,7 +86,20 @@ func initLogger(cfg *config.Config) zerolog.Logger {
 		logLevel = zerolog.DebugLevel
 	}
 
-	return zerolog.New(os.Stdout).Level(logLevel).With().Timestamp().Logger()
+	base := zerolog.New(os.Stdout).Level(logLevel).With().Timestamp().Logger()
+
+	if cfg.Qumomf.EnableSysLog {
+		w, err := syslog.New(syslog.LOG_INFO, "qumomf")
+		if err != nil {
+			log.Warn().Err(err).Msg("Unable to connect to the system log daemon")
+			return base
+		}
+		syslogWriter := zerolog.SyslogLevelWriter(w)
+
+		return zerolog.New(zerolog.MultiLevelWriter(os.Stdout, syslogWriter)).Level(logLevel).With().Timestamp().Logger()
+	}
+
+	return base
 }
 
 func initHTTPServer(port string) *http.Server {
