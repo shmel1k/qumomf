@@ -7,7 +7,7 @@ builds:
       - CGO_ENABLED=0
     main: ./cmd/qumomf/main.go
     ldflags:
-      - -s -w -X main.Version={{.Version}} -X main.Commit={{.Commit}} -X main.BuildDate={{.Date}}`
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.buildDate={{.Date}}
 
 archives:
   - replacements:
