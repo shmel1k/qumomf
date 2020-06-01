@@ -49,6 +49,10 @@ func main() {
 		}
 	}()
 
+	if len(cfg.Clusters) == 0 {
+		logger.Warn().Msg("No clusters are found in the configuration")
+	}
+
 	qCoordinator := coordinator.New(logger)
 	for clusterName, clusterCfg := range cfg.Clusters {
 		err = qCoordinator.RegisterCluster(clusterName, clusterCfg, cfg)
