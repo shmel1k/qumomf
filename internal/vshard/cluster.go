@@ -278,7 +278,6 @@ func (c *Cluster) Discover() {
 
 	router := pickUpRandomRouter(snapshot.Routers)
 	if router == nil {
-		metrics.NewFailedClusterDiscoveryAttempt(c.Name)
 		c.logger.Error().Msg("There is no router in the cluster to discover its topology")
 		return
 	}
@@ -288,7 +287,6 @@ func (c *Cluster) Discover() {
 	conn := c.Connector(router.URI)
 	resp := conn.Exec(ctx, vshardRouterInfoQuery)
 	if resp.Error != nil {
-		metrics.NewFailedClusterDiscoveryAttempt(c.Name)
 		c.logger.
 			Err(resp.Error).
 			Str("URI", router.URI).
@@ -299,7 +297,6 @@ func (c *Cluster) Discover() {
 
 	updatedRI, err := ParseRouterInfo(resp.Data)
 	if err != nil {
-		metrics.NewFailedClusterDiscoveryAttempt(c.Name)
 		c.logger.Err(err).
 			Str("URI", router.URI).
 			Str("UUID", string(router.UUID)).
@@ -367,7 +364,7 @@ func (c *Cluster) Discover() {
 		ns.ReplicaSets = append(ns.ReplicaSets, set)
 
 		code, _ := set.HealthStatus()
-		metrics.SetShardCriticalLevel(string(set.UUID), int(code))
+		metrics.SetShardCriticalLevel(c.Name, string(set.UUID), int(code))
 
 		c.logger.Debug().Msgf("Discovered: %s", set.String())
 	}
@@ -423,14 +420,12 @@ func (c *Cluster) discoverInstances(ctx context.Context, instances []Instance) {
 }
 
 func (c *Cluster) discoverInstance(ctx context.Context, inst *Instance) {
-	txn := metrics.StartInstanceDiscovery(inst.URI)
+	txn := metrics.StartInstanceDiscovery(c.Name, inst.URI)
 	defer txn.End()
 
 	conn := c.Connector(inst.URI)
 	resp := conn.Exec(ctx, vshardInstanceInfoQuery)
 	if resp.Error != nil {
-		metrics.NewFailedInstanceDiscoveryAttempt(inst.URI)
-
 		c.logger.Err(resp.Error).
 			Str("URI", inst.URI).
 			Str("UUID", string(inst.UUID)).
@@ -441,8 +436,6 @@ func (c *Cluster) discoverInstance(ctx context.Context, inst *Instance) {
 
 	info, err := ParseInstanceInfo(resp.Data)
 	if err != nil {
-		metrics.NewFailedInstanceDiscoveryAttempt(inst.URI)
-
 		c.logger.Err(err).
 			Str("URI", inst.URI).
 			Str("UUID", string(inst.UUID)).

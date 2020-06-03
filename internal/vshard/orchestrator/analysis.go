@@ -28,6 +28,21 @@ const (
 	InconsistentVShardConfiguration  ReplicaSetState = "InconsistentVShardConfiguration"
 )
 
+var (
+	ReplicaSetStateEnum = []ReplicaSetState{
+		NoProblem,
+		DeadMaster,
+		DeadMasterAndFollowers,
+		DeadMasterAndSomeFollowers,
+		DeadMasterWithoutFollowers,
+		DeadFollowers,
+		AllMasterFollowersNotReplicating,
+		NetworkProblems,
+		MasterMasterReplication,
+		InconsistentVShardConfiguration,
+	}
+)
+
 type ReplicationAnalysis struct {
 	Set                         vshard.ReplicaSet
 	CountReplicas               int // Total number of replicas in set
