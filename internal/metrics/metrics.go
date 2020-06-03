@@ -4,11 +4,9 @@ import "github.com/prometheus/client_golang/prometheus"
 
 const (
 	discoveryInstanceDurations = "instance_durations"
-	discoveryInstanceFailures  = "instance_failures"
 	discoveryClusterDurations  = "cluster_durations"
-	discoveryClusterFailures   = "cluster_failures"
 	shardCriticalLevel         = "critical_level"
-	totalRecoveryAttempts      = "attempt_count"
+	shardState                 = "state"
 )
 
 var (
@@ -17,47 +15,33 @@ var (
 		Name:       discoveryInstanceDurations,
 		Help:       "Instance discovery latencies in seconds",
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
-	}, []string{"hostname"})
-
-	discoveryInstanceFailuresCnt = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Subsystem: "discovery",
-		Name:      discoveryInstanceFailures,
-		Help:      "Total number of failed instance discoveries",
-	}, []string{"hostname"})
+	}, []string{"cluster_name", "hostname"})
 
 	discoveryClusterDurationsSum = prometheus.NewSummaryVec(prometheus.SummaryOpts{
 		Subsystem:  "discovery",
 		Name:       discoveryClusterDurations,
 		Help:       "Cluster discovery latencies in seconds",
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
-	}, []string{"name"})
-
-	discoveryClusterFailuresCnt = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Subsystem: "discovery",
-		Name:      discoveryClusterFailures,
-		Help:      "Total number of failed cluster discoveries",
-	}, []string{"name"})
+	}, []string{"cluster_name"})
 
 	shardCriticalLevelGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Subsystem: "shard",
 		Name:      shardCriticalLevel,
 		Help:      "Critical level of the replica set",
-	}, []string{"uuid"})
+	}, []string{"cluster_name", "uuid"})
 
-	recoveryAttemptsCnt = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Subsystem: "recovery",
-		Name:      totalRecoveryAttempts,
-		Help:      "Total number of recovery attempts",
-	}, []string{"uuid", "reason", "success"})
+	shardStateGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Subsystem: "shard",
+		Name:      shardState,
+		Help:      "The state of each shard in the cluster; it will have one line for each possible state of each shard. A value of 1 means the shard is in the state specified by the state label, a value of 0 means it is not.",
+	}, []string{"cluster_name", "uuid", "state"})
 )
 
 func init() {
 	prometheus.MustRegister(discoveryInstanceDurationsSum)
-	prometheus.MustRegister(discoveryInstanceFailuresCnt)
 	prometheus.MustRegister(discoveryClusterDurationsSum)
-	prometheus.MustRegister(discoveryClusterFailuresCnt)
 	prometheus.MustRegister(shardCriticalLevelGauge)
-	prometheus.MustRegister(recoveryAttemptsCnt)
+	prometheus.MustRegister(shardStateGauge)
 }
 
 type Transaction interface {
@@ -80,42 +64,34 @@ func (txn *timeTransaction) End() {
 	txn.timer.ObserveDuration()
 }
 
-func StartInstanceDiscovery(hostname string) Transaction {
+func StartInstanceDiscovery(clusterName, hostname string) Transaction {
 	txn := &timeTransaction{
 		summary: discoveryInstanceDurationsSum,
-		labels:  []string{hostname},
+		labels:  []string{clusterName, hostname},
 	}
 	return txn.Start()
 }
 
-func NewFailedInstanceDiscoveryAttempt(hostname string) {
-	discoveryInstanceFailuresCnt.WithLabelValues(hostname).Inc()
-}
-
-func StartClusterDiscovery(name string) Transaction {
+func StartClusterDiscovery(clusterName string) Transaction {
 	txn := &timeTransaction{
 		summary: discoveryClusterDurationsSum,
-		labels:  []string{name},
+		labels:  []string{clusterName},
 	}
 	return txn.Start()
 }
 
-func NewFailedClusterDiscoveryAttempt(name string) {
-	discoveryClusterFailuresCnt.WithLabelValues(name).Inc()
+func SetShardCriticalLevel(clusterName, uuid string, level int) {
+	shardCriticalLevelGauge.WithLabelValues(clusterName, uuid).Set(float64(level))
 }
 
-func SetShardCriticalLevel(uuid string, level int) {
-	shardCriticalLevelGauge.WithLabelValues(uuid).Set(float64(level))
-}
-
-func NewRecoveryAttempt(uuid, reason string, success bool) {
-	successValue := "0"
-	if success {
-		successValue = "1"
+func SetShardState(clusterName, uuid, state string, active bool) {
+	v := float64(0)
+	if active {
+		v = 1
 	}
-	recoveryAttemptsCnt.With(prometheus.Labels{
-		"uuid":    uuid,
-		"reason":  reason,
-		"success": successValue,
-	}).Inc()
+	shardStateGauge.With(prometheus.Labels{
+		"cluster_name": clusterName,
+		"uuid":         uuid,
+		"state":        state,
+	}).Set(v)
 }

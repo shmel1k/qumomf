@@ -5,6 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/shmel1k/qumomf/internal/metrics"
 	"github.com/shmel1k/qumomf/internal/vshard"
 )
 
@@ -82,6 +83,11 @@ func (m *storageMonitor) checkCluster(stream AnalysisWriteStream) {
 			analysis := analyze(set, logger)
 			if analysis != nil {
 				stream <- analysis
+
+				for _, state := range ReplicaSetStateEnum {
+					active := state == analysis.State
+					metrics.SetShardState(m.cluster.Name, string(set.UUID), string(state), active)
+				}
 			}
 		}(set)
 	}
