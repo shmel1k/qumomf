@@ -57,6 +57,10 @@ nfpms:
     epoch: 1
     release: 1
 
+    scripts:
+      postinstall: "scripts/postinstall.sh"
+      preremove: "scripts/preremove.sh"
+
     files:
       "scripts/etc/systemd/**": "/etc/systemd/system"
 
