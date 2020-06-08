@@ -1,6 +1,13 @@
 qumomf:
   port: ':8080'
-  log_level: "debug"
+  logging:
+    level: 'debug'
+    syslog_enabled: false
+    file_enabled: true
+    file_name: '/home/pavel/work/qumomf/src/github.com/shmel1k/qumomf/bin/qumomf.log'
+    file_max_size: 256
+    file_max_backups: 3
+    file_max_age: 5
   readonly: true
   cluster_discovery_time: '5s'
   cluster_recovery_time: '1s'

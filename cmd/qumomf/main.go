@@ -3,16 +3,21 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
+	"io"
 	"log/syslog"
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sys/unix"
+	"gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/shmel1k/qumomf/internal/config"
 	"github.com/shmel1k/qumomf/internal/coordinator"
@@ -80,26 +85,57 @@ func main() {
 func initLogger(cfg *config.Config) zerolog.Logger {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
-	logLevel, err := zerolog.ParseLevel(cfg.Qumomf.LogLevel)
+	loggingCfg := cfg.Qumomf.Logging
+
+	logLevel, err := zerolog.ParseLevel(loggingCfg.Level)
 	if err != nil {
-		log.Warn().Msgf("Unknown Level String: '%s', defaulting to DebugLevel", cfg.Qumomf.LogLevel)
+		log.Warn().Msgf("Unknown Level String: '%s', defaulting to DebugLevel", loggingCfg.Level)
 		logLevel = zerolog.DebugLevel
 	}
 
-	base := zerolog.New(os.Stdout).Level(logLevel).With().Timestamp().Logger()
+	writers := make([]io.Writer, 0, 1)
+	writers = append(writers, os.Stdout)
 
-	if cfg.Qumomf.EnableSysLog {
+	if loggingCfg.SysLogEnabled {
 		w, err := syslog.New(syslog.LOG_INFO, "qumomf")
 		if err != nil {
 			log.Warn().Err(err).Msg("Unable to connect to the system log daemon")
-			return base
+		} else {
+			writers = append(writers, zerolog.SyslogLevelWriter(w))
 		}
-		syslogWriter := zerolog.SyslogLevelWriter(w)
-
-		return zerolog.New(zerolog.MultiLevelWriter(os.Stdout, syslogWriter)).Level(logLevel).With().Timestamp().Logger()
 	}
 
-	return base
+	if loggingCfg.FileLoggingEnabled {
+		w, err := newRollingLogFile(&loggingCfg)
+		if err != nil {
+			log.Warn().Err(err).Msg("Unable to init file logger")
+		} else {
+			writers = append(writers, w)
+		}
+	}
+
+	var baseLogger zerolog.Logger
+	if len(writers) == 1 {
+		baseLogger = zerolog.New(writers[0])
+	} else {
+		return zerolog.New(zerolog.MultiLevelWriter(writers...))
+	}
+
+	return baseLogger.Level(logLevel).With().Timestamp().Logger()
+}
+
+func newRollingLogFile(cfg *config.Logging) (io.Writer, error) {
+	dir := path.Dir(cfg.Filename)
+	if unix.Access(dir, unix.W_OK) != nil {
+		return nil, fmt.Errorf("no permissions to write logs to dir: %s", dir)
+	}
+
+	return &lumberjack.Logger{
+		Filename:   cfg.Filename,
+		MaxBackups: cfg.MaxBackups,
+		MaxSize:    cfg.MaxSize,
+		MaxAge:     cfg.MaxAge,
+	}, nil
 }
 
 func initHTTPServer(port string) *http.Server {

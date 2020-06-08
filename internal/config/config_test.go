@@ -24,8 +24,16 @@ func TestSetup_ValidPath(t *testing.T) {
 	require.NotNil(t, cfg)
 
 	assert.Equal(t, ":8080", cfg.Qumomf.Port)
-	assert.Equal(t, "debug", cfg.Qumomf.LogLevel)
-	assert.True(t, cfg.Qumomf.EnableSysLog)
+
+	loggingCfg := cfg.Qumomf.Logging
+	assert.Equal(t, "debug", loggingCfg.Level)
+	assert.True(t, loggingCfg.SysLogEnabled)
+	assert.True(t, loggingCfg.FileLoggingEnabled)
+	assert.Equal(t, "/var/log/qumomf.log", loggingCfg.Filename)
+	assert.Equal(t, 256, loggingCfg.MaxSize)
+	assert.Equal(t, 3, loggingCfg.MaxBackups)
+	assert.Equal(t, 5, loggingCfg.MaxAge)
+
 	assert.True(t, cfg.Qumomf.ReadOnly)
 	assert.Equal(t, 60*time.Second, cfg.Qumomf.ClusterDiscoveryTime)
 	assert.Equal(t, 5*time.Second, cfg.Qumomf.ClusterRecoveryTime)
