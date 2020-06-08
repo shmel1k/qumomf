@@ -1,11 +1,22 @@
 qumomf:
   # TCP port to listen.
   port: ':8080'
-  # Verbose level of logging: trace, debug, info, warn, error, fatal, panic.
-  # To disable logging, pass an empty string.
-  log_level: "debug"
-  # Write to the local syslog daemon as well as to stdout.
-  enable_syslog: false
+  logging:
+    # Verbose level of logging: trace, debug, info, warn, error, fatal, panic.
+    # To disable logging, pass an empty string.
+    level: 'debug'
+    # Write logs to the local syslog daemon.
+    syslog_enabled: false
+    # Write logs to the file.
+    file_enabled: true
+    # Absolute path to the log output file.
+    file_name: '/var/log/qumomf.log'
+    # The max size in MB of the logfile before it's rolled.
+    file_max_size: 256
+    # The max number of rolled files to keep.
+    file_max_backups: 3
+    # The max age in days to keep a logfile.
+    file_max_age: 5
   # Indicates whether qumomf should run in the readonly mode:
   # no auto failover will be executed.
   # Can be overwritten by cluster-specific options.

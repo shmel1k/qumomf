@@ -10,6 +10,12 @@ import (
 
 const (
 	defaultLogLevel                  = "debug"
+	defaultSysLogEnabled             = false
+	defaultFileLoggingEnabled        = false
+	defaultLogFilename               = "/var/log/qumomf.log"
+	defaultLogFileMaxSize            = 256
+	defaultLogFileMaxBackups         = 3
+	defaultLogFileMaxAge             = 5
 	defaultReadOnly                  = true
 	defaultUser                      = "guest"
 	defaultPassword                  = "guest"
@@ -31,8 +37,7 @@ type Config struct {
 	// Qumomf is a set of global options determines qumomf's behavior.
 	Qumomf struct {
 		Port                      string        `yaml:"port"`
-		LogLevel                  string        `yaml:"log_level"`
-		EnableSysLog              bool          `yaml:"enable_syslog"`
+		Logging                   Logging       `yaml:"logging"`
 		ReadOnly                  bool          `yaml:"readonly"`
 		ClusterDiscoveryTime      time.Duration `yaml:"cluster_discovery_time"`
 		ClusterRecoveryTime       time.Duration `yaml:"cluster_recovery_time"`
@@ -55,6 +60,16 @@ type Config struct {
 	// This options might be overridden by cluster-level options.
 	Connection *ConnectConfig           `yaml:"connection,omitempty"`
 	Clusters   map[string]ClusterConfig `yaml:"clusters"`
+}
+
+type Logging struct {
+	Level              string `yaml:"level"`
+	SysLogEnabled      bool   `yaml:"syslog_enabled"`
+	FileLoggingEnabled bool   `yaml:"file_enabled"`
+	Filename           string `yaml:"file_name"`
+	MaxSize            int    `yaml:"file_max_size"`    // megabytes
+	MaxBackups         int    `yaml:"file_max_backups"` // files
+	MaxAge             int    `yaml:"file_max_age"`     // days
 }
 
 type ConnectConfig struct {
@@ -140,7 +155,15 @@ func (c *Config) withDefaults() {
 
 	base := &c.Qumomf
 	base.ReadOnly = defaultReadOnly
-	base.LogLevel = defaultLogLevel
+
+	base.Logging.Level = defaultLogLevel
+	base.Logging.SysLogEnabled = defaultSysLogEnabled
+	base.Logging.FileLoggingEnabled = defaultFileLoggingEnabled
+	base.Logging.Filename = defaultLogFilename
+	base.Logging.MaxSize = defaultLogFileMaxSize
+	base.Logging.MaxBackups = defaultLogFileMaxBackups
+	base.Logging.MaxAge = defaultLogFileMaxAge
+
 	base.ClusterDiscoveryTime = defaultClusterDiscoveryTime
 	base.ClusterRecoveryTime = defaultClusterRecoveryTime
 	base.ShardRecoveryBlockTime = defaultShardRecoveryBlockTime
