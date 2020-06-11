@@ -55,7 +55,7 @@ func TestCluster_Discover(t *testing.T) {
 			instances: []tExpInst{
 				{
 					uuid:              "a94e7310-13f0-4690-b136-169599e87ba0",
-					uri:               "qumomf@qumomf_1_m.ddk:3301",
+					uri:               "qumomf_1_m.ddk:3301",
 					readonly:          false,
 					hasUpstream:       false,
 					replicationStatus: StatusMaster,
@@ -63,7 +63,7 @@ func TestCluster_Discover(t *testing.T) {
 				},
 				{
 					uuid:              "bd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1",
-					uri:               "qumomf@qumomf_1_s.ddk:3301",
+					uri:               "qumomf_1_s.ddk:3301",
 					readonly:          true,
 					hasUpstream:       true,
 					upstreamStatus:    UpstreamFollow,
@@ -79,7 +79,7 @@ func TestCluster_Discover(t *testing.T) {
 			instances: []tExpInst{
 				{
 					uuid:              "a3ef657e-eb9a-4730-b420-7ea78d52797d",
-					uri:               "qumomf@qumomf_2_m.ddk:3301",
+					uri:               "qumomf_2_m.ddk:3301",
 					readonly:          false,
 					hasUpstream:       false,
 					replicationStatus: StatusMaster,
@@ -87,7 +87,7 @@ func TestCluster_Discover(t *testing.T) {
 				},
 				{
 					uuid:              "bd64dd00-161e-4c99-8b3c-d3c4635e18d2",
-					uri:               "qumomf@qumomf_2_s_1.ddk:3301",
+					uri:               "qumomf_2_s_1.ddk:3301",
 					readonly:          true,
 					hasUpstream:       true,
 					upstreamStatus:    UpstreamFollow,
@@ -97,7 +97,7 @@ func TestCluster_Discover(t *testing.T) {
 				},
 				{
 					uuid:              "cc4cfb9c-11d8-4810-84d2-66cfbebb0f6e",
-					uri:               "qumomf@qumomf_2_s_2.ddk:3301",
+					uri:               "qumomf_2_s_2.ddk:3301",
 					readonly:          true,
 					hasUpstream:       true,
 					upstreamStatus:    UpstreamFollow,

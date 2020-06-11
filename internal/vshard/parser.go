@@ -170,6 +170,7 @@ func parseRouterInstance(dt container) (RouterInstanceParameters, error) {
 	if err != nil {
 		return RouterInstanceParameters{}, err
 	}
+	uri = removeUserInfo(uri)
 
 	status, err := mp.getString("status")
 	if err != nil {
@@ -439,7 +440,7 @@ func ParseReplication(data [][]interface{}) ([]Instance, error) {
 
 		uri := ""
 		if upstream != nil {
-			uri = upstream.Peer
+			uri = removeUserInfo(upstream.Peer)
 		}
 
 		inst := Instance{

@@ -254,7 +254,7 @@ func Test_storageMonitor_analyze(t *testing.T) {
 func mockInstance(id int, valid bool, status vshard.ReplicationStatus) vshard.Instance {
 	return vshard.Instance{
 		UUID:           vshard.InstanceUUID(fmt.Sprintf("replica_%d", id)),
-		URI:            fmt.Sprintf("qumomf@replica_%d:3306", id),
+		URI:            fmt.Sprintf("replica_%d:3306", id),
 		LastCheckValid: valid,
 		StorageInfo: vshard.StorageInfo{
 			Replication: vshard.Replication{

@@ -62,7 +62,7 @@ type Instance struct {
 	// UUID is a global unique identifier of the instance.
 	UUID InstanceUUID `json:"uuid"`
 
-	// URI contains the replication user name, host IP address and port number of the instance.
+	// URI contains the host IP address and port number of the instance.
 	URI string `json:"uri"`
 
 	// Readonly indicates whether the instance is readonly or readwrite.
