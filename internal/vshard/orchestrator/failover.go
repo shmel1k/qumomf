@@ -348,6 +348,7 @@ func (f *failover) applyFollowerRoleToCoMasters(ctx context.Context, analysis *R
 		recv := NewRecovery(RecoveryScopeInstance, inst.Ident(), *analysis)
 		recv.ExpireAfter(f.recvInstanceTTL)
 		recv.ClusterName = f.cluster.Name
+		recv.Successor = inst.Ident()
 
 		err := f.hooker.ExecuteProcesses(HookPreFailover, recv, true)
 		if err != nil {
