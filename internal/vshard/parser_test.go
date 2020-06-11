@@ -48,13 +48,13 @@ func TestParseRouterInfo(t *testing.T) {
 		"7432f072-c00b-4498-b1a6-6d9547a8a150": RouterInstanceParameters{
 			UUID:           "a94e7310-13f0-4690-b136-169599e87ba0",
 			Status:         InstanceAvailable,
-			URI:            "qumomf@qumomf_1_m.ddk:3301",
+			URI:            "qumomf_1_m.ddk:3301",
 			NetworkTimeout: 0.5,
 		},
 		"5065fb5f-5f40-498e-af79-43887ba3d1ec": RouterInstanceParameters{
 			UUID:           "a3ef657e-eb9a-4730-b420-7ea78d52797d",
 			Status:         InstanceAvailable,
-			URI:            "qumomf@qumomf_2_m.ddk:3301",
+			URI:            "qumomf_2_m.ddk:3301",
 			NetworkTimeout: 0.5,
 		},
 	}
@@ -109,7 +109,7 @@ func TestParseReplication(t *testing.T) {
 	replica := data[1]
 	assert.Equal(t, uint64(2), replica.ID)
 	assert.Equal(t, InstanceUUID("bd1095d1-1e73-4ceb-8e2f-6ebdc7838cb1"), replica.UUID)
-	assert.Equal(t, "qumomf@qumomf_1_s.ddk:3301", replica.URI)
+	assert.Equal(t, "qumomf_1_s.ddk:3301", replica.URI)
 	assert.Equal(t, int64(0), replica.LSN)
 	assert.Equal(t, int64(0), replica.LSNBehindMaster)
 	require.NotNil(t, replica.Upstream)
