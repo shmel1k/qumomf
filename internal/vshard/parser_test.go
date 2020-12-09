@@ -239,7 +239,7 @@ func TestParseReplication_TableTests(t *testing.T) {
 			got, err := ParseReplication(tc.data)
 
 			assert.NoError(t, err)
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
