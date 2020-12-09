@@ -400,6 +400,11 @@ func ParseReplication(data [][]interface{}) ([]Instance, error) {
 
 	instances := make([]Instance, 0, len(tuple))
 	for _, t := range tuple {
+		if t == nil {
+			// 'table' type in lua can contains gaps, such values should be ignored
+			continue
+		}
+
 		mp, err := castToContainer(t)
 		if err != nil {
 			return nil, err

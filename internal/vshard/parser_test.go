@@ -163,3 +163,83 @@ func TestParseInstanceInfo(t *testing.T) {
 	}
 	assert.Equal(t, b, storage.Bucket)
 }
+
+func TestParseReplication_TableTests(t *testing.T) {
+	tests := []struct {
+		name string
+		data [][]interface{}
+		want []Instance
+	}{
+		{
+			name: "regular_case",
+			data: [][]interface{}{
+				{
+					map[string]interface{}{
+						"id":                int64(1),
+						"uuid":              "uuid",
+						"lsn":               int64(1),
+						"lsn_behind_master": int64(1),
+						"downstream": map[string]interface{}{
+							"idle":   int64(1),
+							"status": "follow",
+						},
+						"upstream": map[string]interface{}{
+							"idle":   int64(1),
+							"lag":    int64(1),
+							"peer":   "test@test",
+							"status": "follow",
+						},
+					},
+				},
+			},
+			want: []Instance{
+				{
+					URI:             "test",
+					ID:              1,
+					UUID:            "uuid",
+					LSN:             1,
+					LSNBehindMaster: 1,
+					Downstream:      &Downstream{Status: DownstreamFollow},
+					Upstream: &Upstream{
+						Status: UpstreamFollow,
+						Idle:   1,
+						Peer:   "test@test",
+						Lag:    1,
+					},
+				},
+			},
+		},
+		{
+			name: "response_array_with_gaps_should_ignore_it",
+			data: [][]interface{}{
+				{
+					nil,
+					map[string]interface{}{
+						"id":                int64(1),
+						"uuid":              "uuid",
+						"lsn":               int64(1),
+						"lsn_behind_master": int64(1),
+					},
+				},
+			},
+			want: []Instance{
+				{
+					ID:              1,
+					UUID:            "uuid",
+					LSN:             1,
+					LSNBehindMaster: 1,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tc := tt
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseReplication(tc.data)
+
+			assert.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
