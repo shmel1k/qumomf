@@ -131,7 +131,7 @@ func (f *failover) shouldBeAnalysisChecked() bool {
 
 func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAnalysis) {
 	logger := f.logger.With().Str("ReplicaSet", string(analysis.Set.UUID)).Logger()
-	logger.Info().Msgf("checkAndRecover: %s", analysis.String())
+	logger.Debug().Msgf("checkAndRecover: %s", analysis.String())
 
 	recvFunc, desc := f.getCheckAndRecoveryFunc(analysis.State)
 	if recvFunc == nil {

@@ -93,11 +93,18 @@ func (set ReplicaSet) Master() (Instance, error) {
 
 func (set ReplicaSet) String() string {
 	// Minimal style, only important info.
+	master, err := set.Master()
+	if err != nil {
+		return fmt.Sprintf("failed to get replica set master: %s", err)
+	}
+
 	var sb strings.Builder
 	sb.WriteString("id: ")
 	sb.WriteString(string(set.UUID))
-	sb.WriteString("; lead: ")
+	sb.WriteString("; master uuid: ")
 	sb.WriteString(string(set.MasterUUID))
+	sb.WriteString("; master uri: ")
+	sb.WriteString(master.URI)
 	sb.WriteString("; size: ")
 	sb.WriteString(strconv.Itoa(len(set.Instances)))
 	sb.WriteString("; health: ")

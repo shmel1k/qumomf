@@ -99,6 +99,9 @@ type Cluster struct {
 
 	mutex  sync.RWMutex
 	logger zerolog.Logger
+
+	setStates map[string]string
+	mu        *sync.RWMutex
 }
 
 func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
@@ -115,7 +118,9 @@ func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
 		snapshot: Snapshot{
 			Created: util.Timestamp(),
 		},
-		readOnly: *cfg.ReadOnly,
+		readOnly:  *cfg.ReadOnly,
+		setStates: map[string]string{},
+		mu:        &sync.RWMutex{},
 	}
 	c.snapshot.UpdatePriorities(cfg.Priorities)
 
@@ -281,7 +286,7 @@ func (c *Cluster) Discover() {
 		c.logger.Error().Msg("There is no router in the cluster to discover its topology")
 		return
 	}
-	c.logger.Debug().Msgf("Picked up the router '%s' in the cluster to discover its topology", router.UUID)
+	c.logger.Debug().Msgf("Picked up the router uuid: '%s' uri: '%s' in the cluster to discover its topology", router.UUID, router.URI)
 
 	// Read the topology configuration from the selected router.
 	conn := c.Connector(router.URI)
@@ -328,6 +333,7 @@ func (c *Cluster) Discover() {
 				if err == ErrReplicaSetNotFound {
 					c.logger.Error().
 						Str("ReplicaSet", string(uuid)).
+						Str("URI", master.URI).
 						Msg("There is no any previous snapshots of the topology")
 					return
 				}
@@ -366,7 +372,7 @@ func (c *Cluster) Discover() {
 		code, _ := set.HealthStatus()
 		metrics.SetShardCriticalLevel(c.Name, string(set.UUID), int(code))
 
-		c.logger.Debug().Msgf("Discovered: %s", set.String())
+		c.logSetInfo(set)
 	}
 
 	c.mutex.Lock()
@@ -375,6 +381,29 @@ func (c *Cluster) Discover() {
 		c.snapshot = ns
 	}
 	c.mutex.Unlock()
+}
+
+func (c *Cluster) logSetInfo(set ReplicaSet) {
+	setState := set.String()
+	gotHash, err := util.GetHash([]byte(setState))
+	if err != nil {
+		c.logger.Info().Str("set state", setState)
+
+		return
+	}
+
+	c.mu.RLock()
+	foundHash, ok := c.setStates[string(set.UUID)]
+	c.mu.RUnlock()
+	if ok && foundHash == gotHash {
+		return
+	}
+
+	c.logger.Info().Str("set state", setState)
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.setStates[string(set.UUID)] = gotHash
 }
 
 func (c *Cluster) discoverReplication(ctx context.Context, master RouterInstanceParameters) ([]Instance, error) {
