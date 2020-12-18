@@ -101,9 +101,9 @@ func (set ReplicaSet) String() string {
 	var sb strings.Builder
 	sb.WriteString("id: ")
 	sb.WriteString(string(set.UUID))
-	sb.WriteString("; master uuid: ")
+	sb.WriteString("; master UUID: ")
 	sb.WriteString(string(set.MasterUUID))
-	sb.WriteString("; master uri: ")
+	sb.WriteString("; master URI: ")
 	sb.WriteString(master.URI)
 	sb.WriteString("; size: ")
 	sb.WriteString(strconv.Itoa(len(set.Instances)))
@@ -124,6 +124,9 @@ func (set ReplicaSet) String() string {
 			if prettyList {
 				sb.WriteString(", ")
 			}
+			sb.WriteString("instance URI: ")
+			sb.WriteString(inst.URI)
+			sb.WriteString(", ")
 			sb.WriteString(string(inst.UUID))
 			sb.WriteString(" -> ")
 			for j, alert := range alerts {

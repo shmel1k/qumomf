@@ -398,8 +398,7 @@ func (c *Cluster) logSetInfo(set ReplicaSet) {
 	if ok && foundHash == gotHash {
 		return
 	}
-
-	c.logger.Info().Str("set state", setState)
+	c.logger.Info().Msgf("set state: %s", setState)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
