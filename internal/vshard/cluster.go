@@ -99,9 +99,6 @@ type Cluster struct {
 
 	mutex  sync.RWMutex
 	logger zerolog.Logger
-
-	setStates map[string]string
-	mu        *sync.RWMutex
 }
 
 func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
@@ -118,9 +115,7 @@ func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
 		snapshot: Snapshot{
 			Created: util.Timestamp(),
 		},
-		readOnly:  *cfg.ReadOnly,
-		setStates: map[string]string{},
-		mu:        &sync.RWMutex{},
+		readOnly: *cfg.ReadOnly,
 	}
 	c.snapshot.UpdatePriorities(cfg.Priorities)
 
@@ -372,17 +367,8 @@ func (c *Cluster) Discover() {
 
 		code, _ := set.HealthStatus()
 		metrics.SetShardCriticalLevel(c.Name, string(set.UUID), int(code))
-
-		logLevel := zerolog.InfoLevel
-		previous, err := snapshot.ReplicaSet(set.UUID)
-		if err == nil {
-			s := set
-			if previous.SameAs(&s) {
-				logLevel = zerolog.DebugLevel
-			}
-		}
-
-		c.logSetInfo(logLevel, set)
+		s := set
+		c.logSetInfo(c.getLogLevel(s), set.String())
 	}
 
 	c.mutex.Lock()
@@ -393,13 +379,22 @@ func (c *Cluster) Discover() {
 	c.mutex.Unlock()
 }
 
-func (c *Cluster) logSetInfo(level zerolog.Level, set ReplicaSet) {
+func (c *Cluster) logSetInfo(level zerolog.Level, state string) {
 	switch level {
 	case zerolog.InfoLevel:
-		c.logger.Info().Msgf("set state: %s", set.String())
+		c.logger.Info().Str("state", state).Msg("discovered replica set info")
 	case zerolog.DebugLevel:
-		c.logger.Debug().Msgf("set state: %s", set.String())
+		c.logger.Debug().Str("state", state).Msg("discovered replica set info")
 	}
+}
+
+func (c *Cluster) getLogLevel(set ReplicaSet) zerolog.Level {
+	previous, err := c.snapshot.ReplicaSet(set.UUID)
+	if err != nil || !previous.SameAs(&set) {
+		return zerolog.InfoLevel
+	}
+
+	return zerolog.DebugLevel
 }
 
 func (c *Cluster) discoverReplication(ctx context.Context, master RouterInstanceParameters) ([]Instance, error) {

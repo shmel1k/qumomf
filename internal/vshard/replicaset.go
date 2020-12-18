@@ -132,9 +132,9 @@ func (set ReplicaSet) String() string {
 	var sb strings.Builder
 	sb.WriteString("id: ")
 	sb.WriteString(string(set.UUID))
-	sb.WriteString("; master UUID: ")
+	sb.WriteString("; master_uuid: ")
 	sb.WriteString(string(set.MasterUUID))
-	sb.WriteString("; master URI: ")
+	sb.WriteString("; master_uri: ")
 	sb.WriteString(set.MasterURI)
 	sb.WriteString("; size: ")
 	sb.WriteString(strconv.Itoa(len(set.Instances)))

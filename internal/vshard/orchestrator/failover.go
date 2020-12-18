@@ -137,13 +137,16 @@ func (f *failover) shouldBeAnalysisChecked() bool {
 }
 
 func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAnalysis) {
-	logger := f.logger.With().Str("ReplicaSet", string(analysis.Set.UUID)).Logger()
+	logger := f.logger.With().
+		Str("ReplicaSet", string(analysis.Set.UUID)).
+		Str("master_uri", analysis.Set.MasterURI).
+		Logger()
 	f.logCheckAndRecover(logger, analysis)
 
 	recvFunc, desc := f.getCheckAndRecoveryFunc(analysis.State)
 	if recvFunc == nil {
 		if desc != "" {
-			logger.Warn().Str("master URI", analysis.Set.MasterURI).Msg(desc)
+			logger.Warn().Msg(desc)
 		}
 		return
 	}
@@ -174,9 +177,9 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 func (f *failover) logCheckAndRecover(logger zerolog.Logger, analysis *ReplicationAnalysis) {
 	switch f.sampler.sample(analysis) {
 	case zerolog.InfoLevel:
-		logger.Info().Msgf("checkAndRecover: %s", analysis.String())
+		logger.Info().Str("analysis", analysis.String()).Msg("checkAndRecover")
 	case zerolog.DebugLevel:
-		logger.Debug().Msgf("checkAndRecover: %s", analysis.String())
+		logger.Debug().Str("analysis", analysis.String()).Msg("checkAndRecover")
 	}
 }
 
@@ -247,7 +250,8 @@ func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *Replic
 		return []*Recovery{recv}
 	}
 
-	logger.Info().Msgf("New master is elected. UUID: %s URI: %s. Going to update cluster configuration", candidateUUID, candidate.URI)
+	logger.Info().Str("uuid", string(candidateUUID)).Str("uri", candidate.URI).
+		Msg("New master is elected. Going to update cluster configuration")
 
 	recvQuery := buildRecoveryQuery(badSet.UUID, candidateUUID)
 
