@@ -286,7 +286,7 @@ func (c *Cluster) Discover() {
 		c.logger.Error().Msg("There is no router in the cluster to discover its topology")
 		return
 	}
-	c.logger.Debug().Msgf("Picked up the router uuid: '%s' uri: '%s' in the cluster to discover its topology", router.UUID, router.URI)
+	c.logger.Debug().Str("uuid", string(router.UUID)).Str("uri", router.URI).Msgf("Picked up the router in the cluster to discover its topology")
 
 	// Read the topology configuration from the selected router.
 	conn := c.Connector(router.URI)
@@ -344,6 +344,7 @@ func (c *Cluster) Discover() {
 			set := ReplicaSet{
 				UUID:       uuid,
 				MasterUUID: master.UUID,
+				MasterURI:  master.URI,
 				Instances:  topology,
 			}
 
@@ -372,7 +373,16 @@ func (c *Cluster) Discover() {
 		code, _ := set.HealthStatus()
 		metrics.SetShardCriticalLevel(c.Name, string(set.UUID), int(code))
 
-		c.logSetInfo(set)
+		logLevel := zerolog.InfoLevel
+		previous, err := snapshot.ReplicaSet(set.UUID)
+		if err == nil {
+			s := set
+			if previous.SameAs(&s) {
+				logLevel = zerolog.DebugLevel
+			}
+		}
+
+		c.logSetInfo(logLevel, set)
 	}
 
 	c.mutex.Lock()
@@ -383,26 +393,13 @@ func (c *Cluster) Discover() {
 	c.mutex.Unlock()
 }
 
-func (c *Cluster) logSetInfo(set ReplicaSet) {
-	setState := set.String()
-	gotHash, err := util.GetHash([]byte(setState))
-	if err != nil {
-		c.logger.Info().Str("set state", setState)
-
-		return
+func (c *Cluster) logSetInfo(level zerolog.Level, set ReplicaSet) {
+	switch level {
+	case zerolog.InfoLevel:
+		c.logger.Info().Msgf("set state: %s", set.String())
+	case zerolog.DebugLevel:
+		c.logger.Debug().Msgf("set state: %s", set.String())
 	}
-
-	c.mu.RLock()
-	foundHash, ok := c.setStates[string(set.UUID)]
-	c.mu.RUnlock()
-	if ok && foundHash == gotHash {
-		return
-	}
-	c.logger.Info().Msgf("set state: %s", setState)
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.setStates[string(set.UUID)] = gotHash
 }
 
 func (c *Cluster) discoverReplication(ctx context.Context, master RouterInstanceParameters) ([]Instance, error) {

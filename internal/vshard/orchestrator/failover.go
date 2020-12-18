@@ -76,6 +76,8 @@ type failover struct {
 
 	stop   chan struct{}
 	logger zerolog.Logger
+
+	sampler sampler
 }
 
 func NewDefaultFailover(cluster *vshard.Cluster, cfg FailoverConfig, logger zerolog.Logger) Failover {
@@ -88,6 +90,11 @@ func NewDefaultFailover(cluster *vshard.Cluster, cfg FailoverConfig, logger zero
 		recvInstanceTTL: cfg.InstanceRecoveryBlockTime,
 		stop:            make(chan struct{}, 1),
 		logger:          logger,
+		sampler: sampler{
+			fingerprints: map[string]string{},
+			enabled:      true,
+			mu:           &sync.RWMutex{},
+		},
 	}
 }
 
@@ -131,19 +138,12 @@ func (f *failover) shouldBeAnalysisChecked() bool {
 
 func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAnalysis) {
 	logger := f.logger.With().Str("ReplicaSet", string(analysis.Set.UUID)).Logger()
-	logger.Debug().Msgf("checkAndRecover: %s", analysis.String())
+	f.logCheckAndRecover(logger, analysis)
 
 	recvFunc, desc := f.getCheckAndRecoveryFunc(analysis.State)
 	if recvFunc == nil {
 		if desc != "" {
-			master, err := analysis.Set.Master()
-			if err != nil {
-				logger.Warn().Msg(desc)
-
-				return
-			}
-
-			logger.Warn().Str("master URI", master.URI).Msg(desc)
+			logger.Warn().Str("master URI", analysis.Set.MasterURI).Msg(desc)
 		}
 		return
 	}
@@ -169,6 +169,15 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 		logger.Info().Msgf("Cluster snapshot after recovery: %s", f.cluster.Dump())
 	}
 	f.cluster.StopRecovery()
+}
+
+func (f *failover) logCheckAndRecover(logger zerolog.Logger, analysis *ReplicationAnalysis) {
+	switch f.sampler.sample(analysis) {
+	case zerolog.InfoLevel:
+		logger.Info().Msgf("checkAndRecover: %s", analysis.String())
+	case zerolog.DebugLevel:
+		logger.Debug().Msgf("checkAndRecover: %s", analysis.String())
+	}
 }
 
 func (f *failover) getCheckAndRecoveryFunc(state ReplicaSetState) (rf RecoveryFunc, desc string) {

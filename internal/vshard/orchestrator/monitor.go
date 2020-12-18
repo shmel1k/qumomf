@@ -123,16 +123,7 @@ func analyze(set vshard.ReplicaSet, logger zerolog.Logger) *ReplicationAnalysis 
 				countReplicatingReplicas++
 				masterMasterReplication = true
 
-				var setMasterURI string
-				setMaster, err := set.Master()
-				if err != nil {
-					logger.Err(err).Msgf("Found M-M replication. Failed to get replica set master")
-					setMasterURI = ""
-				} else {
-					setMasterURI = setMaster.URI
-				}
-
-				logger.Warn().Msgf("Found M-M replication ('%s'-'%s'), ('%s'-'%s')", set.MasterUUID, r.UUID, setMasterURI, r.URI)
+				logger.Warn().Msgf("Found M-M replication ('%s'-'%s'), ('%s'-'%s')", set.MasterUUID, r.UUID, set.MasterURI, r.URI)
 			}
 
 			if r.VShardFingerprint != master.VShardFingerprint {
