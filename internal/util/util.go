@@ -1,8 +1,6 @@
 package util
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"time"
 )
 
@@ -20,11 +18,4 @@ func NewDuration(v time.Duration) *time.Duration {
 
 func NewString(v string) *string {
 	return &v
-}
-
-func GetHash(in []byte) (string, error) {
-	h := sha256.New()
-	_, err := h.Write(in)
-
-	return hex.EncodeToString(h.Sum(nil)), err
 }

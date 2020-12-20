@@ -141,7 +141,7 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 		Str("ReplicaSet", string(analysis.Set.UUID)).
 		Str("master_uri", analysis.Set.MasterURI).
 		Logger()
-	f.logCheckAndRecover(logger, analysis)
+	logger.WithLevel(f.sampler.sample(analysis)).Str("analysis", analysis.String()).Msg("checkAndRecover")
 
 	recvFunc, desc := f.getCheckAndRecoveryFunc(analysis.State)
 	if recvFunc == nil {
@@ -172,15 +172,6 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 		logger.Info().Msgf("Cluster snapshot after recovery: %s", f.cluster.Dump())
 	}
 	f.cluster.StopRecovery()
-}
-
-func (f *failover) logCheckAndRecover(logger zerolog.Logger, analysis *ReplicationAnalysis) {
-	switch f.sampler.sample(analysis) {
-	case zerolog.InfoLevel:
-		logger.Info().Str("analysis", analysis.String()).Msg("checkAndRecover")
-	case zerolog.DebugLevel:
-		logger.Debug().Str("analysis", analysis.String()).Msg("checkAndRecover")
-	}
 }
 
 func (f *failover) getCheckAndRecoveryFunc(state ReplicaSetState) (rf RecoveryFunc, desc string) {

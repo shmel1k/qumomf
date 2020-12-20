@@ -368,7 +368,7 @@ func (c *Cluster) Discover() {
 		code, _ := set.HealthStatus()
 		metrics.SetShardCriticalLevel(c.Name, string(set.UUID), int(code))
 		s := set
-		c.logSetInfo(c.getLogLevel(s), set.String())
+		c.logger.WithLevel(c.getLogLevel(s)).Str("state", set.String()).Msg("discovered replica set info")
 	}
 
 	c.mutex.Lock()
@@ -377,15 +377,6 @@ func (c *Cluster) Discover() {
 		c.snapshot = ns
 	}
 	c.mutex.Unlock()
-}
-
-func (c *Cluster) logSetInfo(level zerolog.Level, state string) {
-	switch level {
-	case zerolog.InfoLevel:
-		c.logger.Info().Str("state", state).Msg("discovered replica set info")
-	case zerolog.DebugLevel:
-		c.logger.Debug().Str("state", state).Msg("discovered replica set info")
-	}
 }
 
 func (c *Cluster) getLogLevel(set ReplicaSet) zerolog.Level {

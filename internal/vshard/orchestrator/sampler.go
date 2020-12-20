@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/rs/zerolog"
-	"github.com/shmel1k/qumomf/internal/util"
 )
 
 type sampler struct {
@@ -19,7 +18,7 @@ func (s *sampler) sample(analysis *ReplicationAnalysis) zerolog.Level {
 	}
 
 	s.mu.RLock()
-	got, err := util.GetHash([]byte(analysis.String()))
+	got, err := analysis.GetHash()
 	s.mu.RUnlock()
 	if err != nil {
 		return zerolog.InfoLevel
