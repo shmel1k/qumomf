@@ -318,7 +318,7 @@ func (c *Cluster) Discover() {
 			topology, err := c.discoverReplication(ctx, master)
 			if err != nil {
 				c.logger.Err(err).
-					Str("ReplicaSet", string(uuid)).
+					Str("replica_set", string(uuid)).
 					Str("URI", master.URI).
 					Str("UUID", string(master.UUID)).
 					Msg("Failed to update the topology, will use the previous snapshot")
@@ -327,7 +327,7 @@ func (c *Cluster) Discover() {
 				topology, err = snapshot.TopologyOf(uuid)
 				if err == ErrReplicaSetNotFound {
 					c.logger.Error().
-						Str("ReplicaSet", string(uuid)).
+						Str("replica_set", string(uuid)).
 						Str("URI", master.URI).
 						Msg("There is no any previous snapshots of the topology")
 					return
@@ -367,8 +367,7 @@ func (c *Cluster) Discover() {
 
 		code, _ := set.HealthStatus()
 		metrics.SetShardCriticalLevel(c.Name, string(set.UUID), int(code))
-		s := set
-		c.logger.WithLevel(c.getLogLevel(s)).Str("state", set.String()).Msg("discovered replica set info")
+		c.logDiscoveredReplicaSet(set)
 	}
 
 	c.mutex.Lock()
@@ -379,9 +378,16 @@ func (c *Cluster) Discover() {
 	c.mutex.Unlock()
 }
 
+func (c *Cluster) logDiscoveredReplicaSet(set ReplicaSet) {
+	c.logger.WithLevel(c.getLogLevel(set)).Str("state", set.String()).Msg("discovered replica set info")
+}
+
 func (c *Cluster) getLogLevel(set ReplicaSet) zerolog.Level {
 	previous, err := c.snapshot.ReplicaSet(set.UUID)
-	if err != nil || !previous.SameAs(&set) {
+	if err != nil {
+		return zerolog.InfoLevel
+	}
+	if !previous.SameAs(&set) {
 		return zerolog.InfoLevel
 	}
 

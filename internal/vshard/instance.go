@@ -181,6 +181,16 @@ func (i *Instance) Idle() float64 {
 	return i.Upstream.Idle
 }
 
+func (i *Instance) SameAs(another Instance) bool {
+	return i.UUID == another.UUID &&
+		i.URI == another.URI &&
+		i.VShardFingerprint == another.VShardFingerprint &&
+		i.ID == another.ID &&
+		i.Readonly == another.Readonly &&
+		i.StorageInfo.Replication.Status == another.StorageInfo.Replication.Status &&
+		i.StorageInfo.Status == another.StorageInfo.Status
+}
+
 // InstanceInfo is a helper structure contains
 // instance info in custom format.
 type InstanceInfo struct {

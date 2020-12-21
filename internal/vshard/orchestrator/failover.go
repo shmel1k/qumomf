@@ -138,7 +138,7 @@ func (f *failover) shouldBeAnalysisChecked() bool {
 
 func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAnalysis) {
 	logger := f.logger.With().
-		Str("ReplicaSet", string(analysis.Set.UUID)).
+		Str("replica_set", string(analysis.Set.UUID)).
 		Str("master_uri", analysis.Set.MasterURI).
 		Logger()
 	logger.WithLevel(f.sampler.sample(analysis)).Str("analysis", analysis.String()).Msg("checkAndRecover")
@@ -208,7 +208,7 @@ func (f *failover) getCheckAndRecoveryFunc(state ReplicaSetState) (rf RecoveryFu
 
 func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *ReplicationAnalysis) []*Recovery {
 	badSet := analysis.Set
-	logger := f.logger.With().Str("ReplicaSet", string(badSet.UUID)).Logger()
+	logger := f.logger.With().Str("replica_set", string(badSet.UUID)).Logger()
 
 	if f.hasBlockedRecovery(string(badSet.UUID)) {
 		logger.Warn().Msg("ReplicaSet has been recovered recently so new failover is blocked")
@@ -333,7 +333,7 @@ func (f *failover) shouldPromoteFollower(inst vshard.Instance) (ok bool, reason 
 // applyFollowerRoleToCoMasters applies follower role to all masters in the shard except the leader.
 func (f *failover) applyFollowerRoleToCoMasters(ctx context.Context, analysis *ReplicationAnalysis) []*Recovery {
 	badSet := &analysis.Set
-	logger := f.logger.With().Str("ReplicaSet", string(badSet.UUID)).Logger()
+	logger := f.logger.With().Str("replica_set", string(badSet.UUID)).Logger()
 
 	recvQuery := buildRecoveryQuery(badSet.UUID, badSet.MasterUUID)
 

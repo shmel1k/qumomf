@@ -79,7 +79,7 @@ func (m *storageMonitor) checkCluster(stream AnalysisWriteStream) {
 
 	for _, set := range m.cluster.ReplicaSets() {
 		go func(set vshard.ReplicaSet) {
-			logger := m.logger.With().Str("ReplicaSet", string(set.UUID)).Logger()
+			logger := m.logger.With().Str("replica_set", string(set.UUID)).Logger()
 			analysis := analyze(set, logger)
 			if analysis != nil {
 				stream <- analysis

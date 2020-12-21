@@ -40,9 +40,7 @@ func (set ReplicaSet) SameAs(another *ReplicaSet) bool {
 	sortInstances(anotherInstances)
 
 	for i := 0; i < n; i++ {
-		if instances[i].UUID != anotherInstances[i].UUID ||
-			instances[i].URI != anotherInstances[i].URI ||
-			instances[i].VShardFingerprint != anotherInstances[i].VShardFingerprint {
+		if !instances[i].SameAs(anotherInstances[i]) {
 			return false
 		}
 	}

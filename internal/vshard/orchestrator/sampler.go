@@ -17,14 +17,13 @@ func (s *sampler) sample(analysis *ReplicationAnalysis) zerolog.Level {
 		return zerolog.InfoLevel
 	}
 
-	s.mu.RLock()
 	got, err := analysis.GetHash()
-	s.mu.RUnlock()
 	if err != nil {
 		return zerolog.InfoLevel
 	}
-
+	s.mu.RLock()
 	found, ok := s.fingerprints[string(analysis.Set.UUID)]
+	s.mu.RUnlock()
 	if ok && found == got {
 		return zerolog.DebugLevel
 	}
