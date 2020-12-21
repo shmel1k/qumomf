@@ -385,7 +385,7 @@ func (c *Cluster) logDiscoveredReplicaSet(set ReplicaSet) {
 		logLevel = zerolog.DebugLevel
 	}
 
-	c.logger.WithLevel(logLevel).Str("state", set.String()).Msg("discovered replica set info")
+	c.logger.WithLevel(logLevel).Str("state", set.String()).Msg("discovered replica set")
 }
 
 func (c *Cluster) discoverReplication(ctx context.Context, master RouterInstanceParameters) ([]Instance, error) {

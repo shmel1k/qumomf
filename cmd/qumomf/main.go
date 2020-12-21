@@ -93,6 +93,8 @@ func initLogger(cfg *config.Config) zerolog.Logger {
 		logLevel = zerolog.DebugLevel
 	}
 
+	zerolog.SetGlobalLevel(logLevel)
+
 	writers := make([]io.Writer, 0, 1)
 	writers = append(writers, os.Stdout)
 

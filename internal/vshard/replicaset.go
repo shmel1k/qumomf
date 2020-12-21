@@ -13,7 +13,7 @@ type ReplicaSet struct {
 	// UUID is an unique identifier of the replica set in the cluster.
 	UUID ReplicaSetUUID `json:"uuid"`
 
-	// MasterUUID is an if of current master in the replica set.
+	// MasterUUID is UUID of current master in the replica set.
 	MasterUUID InstanceUUID `json:"master_uuid"`
 
 	// MasterURI is URI of current master in the replica set.
