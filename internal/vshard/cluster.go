@@ -379,19 +379,13 @@ func (c *Cluster) Discover() {
 }
 
 func (c *Cluster) logDiscoveredReplicaSet(set ReplicaSet) {
-	c.logger.WithLevel(c.getLogLevel(set)).Str("state", set.String()).Msg("discovered replica set info")
-}
-
-func (c *Cluster) getLogLevel(set ReplicaSet) zerolog.Level {
+	logLevel := zerolog.InfoLevel
 	previous, err := c.snapshot.ReplicaSet(set.UUID)
-	if err != nil {
-		return zerolog.InfoLevel
-	}
-	if !previous.SameAs(&set) {
-		return zerolog.InfoLevel
+	if err == nil && previous.SameAs(&set) {
+		logLevel = zerolog.DebugLevel
 	}
 
-	return zerolog.DebugLevel
+	c.logger.WithLevel(logLevel).Str("state", set.String()).Msg("discovered replica set info")
 }
 
 func (c *Cluster) discoverReplication(ctx context.Context, master RouterInstanceParameters) ([]Instance, error) {
