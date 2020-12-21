@@ -1,6 +1,8 @@
 package util
 
-import "time"
+import (
+	"time"
+)
 
 func Timestamp() int64 {
 	return time.Now().Unix()

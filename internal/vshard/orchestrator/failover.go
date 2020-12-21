@@ -76,6 +76,8 @@ type failover struct {
 
 	stop   chan struct{}
 	logger zerolog.Logger
+
+	sampler sampler
 }
 
 func NewDefaultFailover(cluster *vshard.Cluster, cfg FailoverConfig, logger zerolog.Logger) Failover {
@@ -88,6 +90,11 @@ func NewDefaultFailover(cluster *vshard.Cluster, cfg FailoverConfig, logger zero
 		recvInstanceTTL: cfg.InstanceRecoveryBlockTime,
 		stop:            make(chan struct{}, 1),
 		logger:          logger,
+		sampler: sampler{
+			fingerprints: map[string]string{},
+			enabled:      true,
+			mu:           &sync.RWMutex{},
+		},
 	}
 }
 
@@ -130,8 +137,11 @@ func (f *failover) shouldBeAnalysisChecked() bool {
 }
 
 func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAnalysis) {
-	logger := f.logger.With().Str("ReplicaSet", string(analysis.Set.UUID)).Logger()
-	logger.Info().Msgf("checkAndRecover: %s", analysis.String())
+	logger := f.logger.With().
+		Str("replica_set", string(analysis.Set.UUID)).
+		Str("master_uri", analysis.Set.MasterURI).
+		Logger()
+	logger.WithLevel(f.sampler.sample(analysis)).Str("analysis", analysis.String()).Msg("checkAndRecover")
 
 	recvFunc, desc := f.getCheckAndRecoveryFunc(analysis.State)
 	if recvFunc == nil {
@@ -198,7 +208,7 @@ func (f *failover) getCheckAndRecoveryFunc(state ReplicaSetState) (rf RecoveryFu
 
 func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *ReplicationAnalysis) []*Recovery {
 	badSet := analysis.Set
-	logger := f.logger.With().Str("ReplicaSet", string(badSet.UUID)).Logger()
+	logger := f.logger.With().Str("replica_set", string(badSet.UUID)).Logger()
 
 	if f.hasBlockedRecovery(string(badSet.UUID)) {
 		logger.Warn().Msg("ReplicaSet has been recovered recently so new failover is blocked")
@@ -231,7 +241,8 @@ func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *Replic
 		return []*Recovery{recv}
 	}
 
-	logger.Info().Msgf("New master is elected: %s. Going to update cluster configuration", candidateUUID)
+	logger.Info().Str("uuid", string(candidateUUID)).Str("uri", candidate.URI).
+		Msg("New master is elected. Going to update cluster configuration")
 
 	recvQuery := buildRecoveryQuery(badSet.UUID, candidateUUID)
 
@@ -322,7 +333,7 @@ func (f *failover) shouldPromoteFollower(inst vshard.Instance) (ok bool, reason 
 // applyFollowerRoleToCoMasters applies follower role to all masters in the shard except the leader.
 func (f *failover) applyFollowerRoleToCoMasters(ctx context.Context, analysis *ReplicationAnalysis) []*Recovery {
 	badSet := &analysis.Set
-	logger := f.logger.With().Str("ReplicaSet", string(badSet.UUID)).Logger()
+	logger := f.logger.With().Str("replica_set", string(badSet.UUID)).Logger()
 
 	recvQuery := buildRecoveryQuery(badSet.UUID, badSet.MasterUUID)
 

@@ -32,6 +32,16 @@ func (s *Snapshot) TopologyOf(uuid ReplicaSetUUID) ([]Instance, error) {
 	return []Instance{}, ErrReplicaSetNotFound
 }
 
+func (s *Snapshot) ReplicaSet(uuid ReplicaSetUUID) (ReplicaSet, error) {
+	for _, set := range s.ReplicaSets {
+		if set.UUID == uuid {
+			return set, nil
+		}
+	}
+
+	return ReplicaSet{}, ErrReplicaSetNotFound
+}
+
 func (s *Snapshot) UpdatePriorities(priorities map[string]int) {
 	s.priorities = priorities
 

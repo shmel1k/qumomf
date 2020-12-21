@@ -1,7 +1,10 @@
 package orchestrator
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"strconv"
 
 	"github.com/shmel1k/qumomf/internal/vshard"
 )
@@ -57,4 +60,24 @@ func (a ReplicationAnalysis) String() string {
 		"[State: %s; CountReplicas: %d; CountWorkingReplicas: %d; CountReplicatingReplicas: %d]",
 		a.State, a.CountReplicas, a.CountWorkingReplicas, a.CountReplicatingReplicas,
 	)
+}
+
+func (a ReplicationAnalysis) GetHash() (string, error) {
+	h := sha256.New()
+
+	for _, val := range []string{
+		string(a.State),
+		strconv.Itoa(a.CountReplicas),
+		strconv.Itoa(a.CountWorkingReplicas),
+		strconv.Itoa(a.CountReplicatingReplicas),
+		strconv.Itoa(a.CountInconsistentVShardConf),
+		a.Set.String(),
+	} {
+		_, err := h.Write([]byte(val))
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return hex.EncodeToString(h.Sum(nil)), nil
 }

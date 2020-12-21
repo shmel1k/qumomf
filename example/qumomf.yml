@@ -1,7 +1,7 @@
 qumomf:
   port: ':8080'
   logging:
-    level: 'debug'
+    level: 'info'
     syslog_enabled: false
     file_enabled: true
     file_name: '/home/pavel/work/qumomf/src/github.com/shmel1k/qumomf/bin/qumomf.log'

@@ -281,7 +281,7 @@ func (c *Cluster) Discover() {
 		c.logger.Error().Msg("There is no router in the cluster to discover its topology")
 		return
 	}
-	c.logger.Debug().Msgf("Picked up the router '%s' in the cluster to discover its topology", router.UUID)
+	c.logger.Debug().Str("uuid", string(router.UUID)).Str("uri", router.URI).Msgf("Picked up the router in the cluster to discover its topology")
 
 	// Read the topology configuration from the selected router.
 	conn := c.Connector(router.URI)
@@ -318,7 +318,7 @@ func (c *Cluster) Discover() {
 			topology, err := c.discoverReplication(ctx, master)
 			if err != nil {
 				c.logger.Err(err).
-					Str("ReplicaSet", string(uuid)).
+					Str("replica_set", string(uuid)).
 					Str("URI", master.URI).
 					Str("UUID", string(master.UUID)).
 					Msg("Failed to update the topology, will use the previous snapshot")
@@ -327,7 +327,8 @@ func (c *Cluster) Discover() {
 				topology, err = snapshot.TopologyOf(uuid)
 				if err == ErrReplicaSetNotFound {
 					c.logger.Error().
-						Str("ReplicaSet", string(uuid)).
+						Str("replica_set", string(uuid)).
+						Str("URI", master.URI).
 						Msg("There is no any previous snapshots of the topology")
 					return
 				}
@@ -338,6 +339,7 @@ func (c *Cluster) Discover() {
 			set := ReplicaSet{
 				UUID:       uuid,
 				MasterUUID: master.UUID,
+				MasterURI:  master.URI,
 				Instances:  topology,
 			}
 
@@ -365,8 +367,7 @@ func (c *Cluster) Discover() {
 
 		code, _ := set.HealthStatus()
 		metrics.SetShardCriticalLevel(c.Name, string(set.UUID), int(code))
-
-		c.logger.Debug().Msgf("Discovered: %s", set.String())
+		c.logDiscoveredReplicaSet(set)
 	}
 
 	c.mutex.Lock()
@@ -375,6 +376,16 @@ func (c *Cluster) Discover() {
 		c.snapshot = ns
 	}
 	c.mutex.Unlock()
+}
+
+func (c *Cluster) logDiscoveredReplicaSet(set ReplicaSet) {
+	logLevel := zerolog.InfoLevel
+	previous, err := c.snapshot.ReplicaSet(set.UUID)
+	if err == nil && previous.SameAs(&set) {
+		logLevel = zerolog.DebugLevel
+	}
+
+	c.logger.WithLevel(logLevel).Str("state", set.String()).Msg("discovered replica set")
 }
 
 func (c *Cluster) discoverReplication(ctx context.Context, master RouterInstanceParameters) ([]Instance, error) {

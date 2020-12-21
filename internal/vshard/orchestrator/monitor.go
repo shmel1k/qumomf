@@ -79,7 +79,7 @@ func (m *storageMonitor) checkCluster(stream AnalysisWriteStream) {
 
 	for _, set := range m.cluster.ReplicaSets() {
 		go func(set vshard.ReplicaSet) {
-			logger := m.logger.With().Str("ReplicaSet", string(set.UUID)).Logger()
+			logger := m.logger.With().Str("replica_set", string(set.UUID)).Logger()
 			analysis := analyze(set, logger)
 			if analysis != nil {
 				stream <- analysis
@@ -122,7 +122,8 @@ func analyze(set vshard.ReplicaSet, logger zerolog.Logger) *ReplicationAnalysis 
 			} else if status == vshard.StatusMaster {
 				countReplicatingReplicas++
 				masterMasterReplication = true
-				logger.Warn().Msgf("Found M-M replication ('%s'-'%s')", set.MasterUUID, r.UUID)
+
+				logger.Warn().Msgf("Found M-M replication ('%s'-'%s'), ('%s'-'%s')", set.MasterUUID, r.UUID, set.MasterURI, r.URI)
 			}
 
 			if r.VShardFingerprint != master.VShardFingerprint {
