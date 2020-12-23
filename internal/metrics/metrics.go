@@ -94,7 +94,7 @@ func StartClusterDiscovery(clusterName string) Transaction {
 	return txn.Start()
 }
 
-func SetShardCriticalLevel(clusterName, uuid string, masterURI string, level int) {
+func SetShardCriticalLevel(clusterName, uuid, masterURI string, level int) {
 	shardCriticalLevelGauge.WithLabelValues(clusterName, uuid, masterURI).Set(float64(level))
 }
 
