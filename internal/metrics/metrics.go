@@ -10,38 +10,52 @@ const (
 )
 
 var (
-	discoveryInstanceDurationsSum = prometheus.NewSummaryVec(prometheus.SummaryOpts{
-		Subsystem:  "discovery",
-		Name:       discoveryInstanceDurations,
-		Help:       "Instance discovery latencies in seconds",
-		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+	discoveryInstanceDurationsBuckets = prometheus.ExponentialBuckets(.001, 2.5, 10)
+	discoveryClusterDurationsBuckets  = prometheus.ExponentialBuckets(.001, 2.5, 10)
+)
+
+var (
+	discoveryInstanceDurationsSum = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Subsystem: "discovery",
+		Name:      discoveryInstanceDurations,
+		Help:      "Instance discovery latencies in seconds",
+		Buckets:   discoveryInstanceDurationsBuckets,
 	}, []string{"cluster_name", "hostname"})
 
-	discoveryClusterDurationsSum = prometheus.NewSummaryVec(prometheus.SummaryOpts{
-		Subsystem:  "discovery",
-		Name:       discoveryClusterDurations,
-		Help:       "Cluster discovery latencies in seconds",
-		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+	discoveryClusterDurationsSum = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Subsystem: "discovery",
+		Name:      discoveryClusterDurations,
+		Help:      "Cluster discovery latencies in seconds",
+		Buckets:   discoveryClusterDurationsBuckets,
 	}, []string{"cluster_name"})
 
 	shardCriticalLevelGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Subsystem: "shard",
 		Name:      shardCriticalLevel,
 		Help:      "Critical level of the replica set",
-	}, []string{"cluster_name", "uuid"})
+	}, []string{"cluster_name", "uuid", "master_uri"})
 
 	shardStateGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Subsystem: "shard",
 		Name:      shardState,
 		Help:      "The state of each shard in the cluster; it will have one line for each possible state of each shard. A value of 1 means the shard is in the state specified by the state label, a value of 0 means it is not.",
-	}, []string{"cluster_name", "uuid", "state"})
+	}, []string{"cluster_name", "uuid", "master_uri", "state"})
+
+	discoveryErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Subsystem: "discovery",
+		Name:      "errors",
+		Help:      "Errors that happen during discovery process",
+	}, []string{"uri"})
 )
 
 func init() {
-	prometheus.MustRegister(discoveryInstanceDurationsSum)
-	prometheus.MustRegister(discoveryClusterDurationsSum)
-	prometheus.MustRegister(shardCriticalLevelGauge)
-	prometheus.MustRegister(shardStateGauge)
+	prometheus.MustRegister(
+		discoveryInstanceDurationsSum,
+		discoveryClusterDurationsSum,
+		shardCriticalLevelGauge,
+		shardStateGauge,
+		discoveryErrors,
+	)
 }
 
 type Transaction interface {
@@ -51,7 +65,7 @@ type Transaction interface {
 
 type timeTransaction struct {
 	labels  []string
-	summary *prometheus.SummaryVec
+	summary *prometheus.HistogramVec
 	timer   *prometheus.Timer
 }
 
@@ -80,11 +94,11 @@ func StartClusterDiscovery(clusterName string) Transaction {
 	return txn.Start()
 }
 
-func SetShardCriticalLevel(clusterName, uuid string, level int) {
-	shardCriticalLevelGauge.WithLabelValues(clusterName, uuid).Set(float64(level))
+func SetShardCriticalLevel(clusterName, uuid, masterURI string, level int) {
+	shardCriticalLevelGauge.WithLabelValues(clusterName, uuid, masterURI).Set(float64(level))
 }
 
-func SetShardState(clusterName, uuid, state string, active bool) {
+func SetShardState(clusterName, uuid, masterURI, state string, active bool) {
 	v := float64(0)
 	if active {
 		v = 1
@@ -92,6 +106,13 @@ func SetShardState(clusterName, uuid, state string, active bool) {
 	shardStateGauge.With(prometheus.Labels{
 		"cluster_name": clusterName,
 		"uuid":         uuid,
+		"master_uri":   masterURI,
 		"state":        state,
 	}).Set(v)
+}
+
+func RecordDiscoveryError(uri string) {
+	discoveryErrors.With(prometheus.Labels{
+		"uri": uri,
+	}).Inc()
 }
