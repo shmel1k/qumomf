@@ -114,7 +114,6 @@ type ClusterConfig struct {
 type RouterConfig struct {
 	Name string `yaml:"name"`
 	Addr string `yaml:"addr"`
-	UUID string `yaml:"uuid"`
 }
 
 func Setup(path string) (*Config, error) {

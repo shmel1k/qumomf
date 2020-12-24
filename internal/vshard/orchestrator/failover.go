@@ -273,12 +273,10 @@ func (f *failover) promoteFollowerToMaster(ctx context.Context, analysis *Replic
 		if resp.Error == nil {
 			logger.Info().
 				Str("URI", r.URI).
-				Str("UUID", string(r.UUID)).
 				Msg("Configuration was updated on router")
 		} else {
 			logger.Err(resp.Error).
 				Str("URI", r.URI).
-				Str("UUID", string(r.UUID)).
 				Msg("Failed to update configuration on router")
 		}
 	}
