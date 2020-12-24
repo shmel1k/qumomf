@@ -49,5 +49,4 @@ clusters:
 
     routers:
       - name: 'router_1'
-        uuid: 'router_1_uuid'
         addr: '127.0.0.1:9301'

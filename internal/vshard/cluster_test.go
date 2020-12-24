@@ -40,7 +40,6 @@ func TestCluster_Discover(t *testing.T) {
 	routers := c.Routers()
 	require.Len(t, routers, 1)
 	r := routers[0]
-	assert.Equal(t, RouterUUID("router_uuid_1"), r.UUID)
 	assert.Equal(t, "127.0.0.1:9301", r.URI)
 
 	sets := c.ReplicaSets()

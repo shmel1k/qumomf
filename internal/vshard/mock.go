@@ -31,7 +31,6 @@ func MockCluster() *Cluster {
 			{
 				Name: "router_1",
 				Addr: "127.0.0.1:9301",
-				UUID: "router_uuid_1",
 			},
 		},
 	})

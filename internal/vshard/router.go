@@ -1,6 +1,5 @@
 package vshard
 
-type RouterUUID string
 type InstanceStatus string
 
 const (
@@ -11,14 +10,12 @@ const (
 
 type Router struct {
 	URI  string     `json:"uri"`
-	UUID RouterUUID `json:"uuid"`
 	Info RouterInfo `json:"info"`
 }
 
-func NewRouter(uri string, uuid RouterUUID) Router {
+func NewRouter(uri string) Router {
 	return Router{
-		URI:  uri,
-		UUID: uuid,
+		URI: uri,
 		Info: RouterInfo{
 			Status: -1,
 		},

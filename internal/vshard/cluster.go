@@ -122,8 +122,7 @@ func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
 	routers := make([]Router, 0, len(cfg.Routers))
 	for _, r := range cfg.Routers {
 		uri := r.Addr
-		uuid := RouterUUID(r.UUID)
-		routers = append(routers, NewRouter(uri, uuid))
+		routers = append(routers, NewRouter(uri))
 	}
 	c.snapshot.Routers = routers
 
@@ -281,7 +280,7 @@ func (c *Cluster) Discover() {
 		c.logger.Error().Msg("There is no router in the cluster to discover its topology")
 		return
 	}
-	c.logger.Debug().Str("uuid", string(router.UUID)).Str("uri", router.URI).Msgf("Picked up the router in the cluster to discover its topology")
+	c.logger.Debug().Str("uri", router.URI).Msgf("Picked up the router in the cluster to discover its topology")
 
 	// Read the topology configuration from the selected router.
 	conn := c.Connector(router.URI)
@@ -291,7 +290,6 @@ func (c *Cluster) Discover() {
 		c.logger.
 			Err(resp.Error).
 			Str("URI", router.URI).
-			Str("UUID", string(router.UUID)).
 			Msgf("Failed to discover the topology of the cluster. Error code: %d", resp.ErrorCode)
 		return
 	}
@@ -301,7 +299,6 @@ func (c *Cluster) Discover() {
 		metrics.RecordDiscoveryError(router.URI)
 		c.logger.Err(err).
 			Str("URI", router.URI).
-			Str("UUID", string(router.UUID)).
 			Msg("Failed to discover the topology of the cluster using router")
 		return
 	}
@@ -359,7 +356,7 @@ func (c *Cluster) Discover() {
 	}
 	for i := range ns.Routers {
 		r := &ns.Routers[i]
-		if r.UUID == router.UUID {
+		if r.URI == router.URI {
 			r.Info = updatedRI
 			break
 		}

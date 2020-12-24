@@ -39,7 +39,6 @@ clusters:
     routers:
       - name: 'my_cluster_router_1'
         addr: 'localhost:3301'
-        uuid: 'my_cluster_router_1'
 ```
 
 You might override default connection settings for each cluster.
@@ -56,7 +55,6 @@ clusters:
     routers:
       - name: 'my_cluster_router_1'
         addr: 'localhost:3301'
-        uuid: 'my_cluster_router_1'
 ```
 
 For a sample vshard configuration, 
