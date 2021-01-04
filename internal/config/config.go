@@ -54,6 +54,9 @@ type Config struct {
 			Timeout                  time.Duration `yaml:"timeout"`
 			TimeoutAsync             time.Duration `yaml:"timeout_async"`
 		} `yaml:"hooks"`
+		Storage struct {
+			Filename string `yaml:"filename"`
+		} `yaml:"storage"`
 	} `yaml:"qumomf"`
 
 	// Connection contains the default connection options for each instance in clusters.

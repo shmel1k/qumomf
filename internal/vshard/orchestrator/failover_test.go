@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shmel1k/qumomf/internal/storage"
+
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -83,7 +85,7 @@ func (s *failoverTestSuite) Test_failover_promoteFollowerToMaster() {
 		s.Run(tt.name, func() {
 			hooker := NewBashHooker(s.logger)
 			elector := quorum.New(tt.mode, tt.opts)
-			s.failover = NewDefaultFailover(s.cluster, FailoverConfig{
+			s.failover = NewDefaultFailover(s.cluster, storage.MockedStorage{}, FailoverConfig{
 				Hooker:                      hooker,
 				Elector:                     elector,
 				ReplicaSetRecoveryBlockTime: 2 * time.Second,
@@ -175,7 +177,7 @@ func (s *failoverTestSuite) Test_failover_applyFollowerRoleToCoMasters() {
 		s.Run(tt.name, func() {
 			hooker := NewBashHooker(s.logger)
 			elector := quorum.New(tt.mode, tt.opts)
-			s.failover = NewDefaultFailover(s.cluster, FailoverConfig{
+			s.failover = NewDefaultFailover(s.cluster, storage.MockedStorage{}, FailoverConfig{
 				Hooker:                      hooker,
 				Elector:                     elector,
 				ReplicaSetRecoveryBlockTime: 2 * time.Second,

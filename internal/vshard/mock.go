@@ -4,11 +4,12 @@ import (
 	"time"
 
 	"github.com/shmel1k/qumomf/internal/config"
+	"github.com/shmel1k/qumomf/internal/storage"
 	"github.com/shmel1k/qumomf/internal/util"
 )
 
 func MockCluster() *Cluster {
-	return NewCluster("sandbox", config.ClusterConfig{
+	return NewCluster("sandbox", storage.MockedStorage{}, config.ClusterConfig{
 		Connection: &config.ConnectConfig{
 			User:           util.NewString("qumomf"),
 			Password:       util.NewString("qumomf"),

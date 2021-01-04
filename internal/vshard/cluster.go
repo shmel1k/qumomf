@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/shmel1k/qumomf/internal/storage"
+
 	"github.com/rs/zerolog"
 	"github.com/viciious/go-tarantool"
 
@@ -99,9 +101,11 @@ type Cluster struct {
 
 	mutex  sync.RWMutex
 	logger zerolog.Logger
+
+	relStorage storage.Storage
 }
 
-func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
+func NewCluster(name string, relStorage storage.Storage, cfg config.ClusterConfig) *Cluster {
 	connTemplate := ConnOptions{
 		User:           *cfg.Connection.User,
 		Password:       *cfg.Connection.Password,
@@ -115,7 +119,8 @@ func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
 		snapshot: Snapshot{
 			Created: util.Timestamp(),
 		},
-		readOnly: *cfg.ReadOnly,
+		readOnly:   *cfg.ReadOnly,
+		relStorage: relStorage,
 	}
 	c.snapshot.UpdatePriorities(cfg.Priorities)
 
@@ -372,9 +377,29 @@ func (c *Cluster) Discover() {
 	c.mutex.Lock()
 	if c.snapshot.Created <= ns.Created {
 		ns.UpdatePriorities(c.snapshot.priorities)
-		c.snapshot = ns
+		c.snapshot = ns.Copy()
+
+		go c.saveSnapshotToStorage(ns.Copy())
 	}
 	c.mutex.Unlock()
+}
+
+func (c *Cluster) saveSnapshotToStorage(ns Snapshot) {
+	data, err := json.Marshal(ns)
+	if err != nil {
+		c.logger.Error().Err(err).Msg("failed to marshall snapshot data")
+
+		return
+	}
+
+	err = c.relStorage.SaveSnapshot(context.Background(), storage.SaveRequest{
+		ClusterName: c.Name,
+		CreatedAt:   ns.Created,
+		Data:        data,
+	})
+	if err != nil {
+		c.logger.Error().Err(err).Msg("failed to save snapshot to storage")
+	}
 }
 
 func (c *Cluster) logDiscoveredReplicaSet(set ReplicaSet) {

@@ -3,12 +3,13 @@ package coordinator
 import (
 	"errors"
 
-	"github.com/rs/zerolog"
-
 	"github.com/shmel1k/qumomf/internal/config"
 	"github.com/shmel1k/qumomf/internal/quorum"
+	"github.com/shmel1k/qumomf/internal/storage"
 	"github.com/shmel1k/qumomf/internal/vshard"
 	"github.com/shmel1k/qumomf/internal/vshard/orchestrator"
+
+	"github.com/rs/zerolog"
 )
 
 var (
@@ -36,14 +37,14 @@ func New(logger zerolog.Logger) *Coordinator {
 	}
 }
 
-func (c *Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, globalCfg *config.Config) error {
+func (c *Coordinator) RegisterCluster(name string, relStorage storage.Storage, cfg config.ClusterConfig, globalCfg *config.Config) error {
 	if _, exist := c.clusters[name]; exist {
 		return ErrClusterAlreadyExist
 	}
 
 	clusterLogger := c.logger.With().Str("cluster", name).Logger()
 
-	cluster := vshard.NewCluster(name, cfg)
+	cluster := vshard.NewCluster(name, relStorage, cfg)
 	cluster.SetLogger(clusterLogger)
 	c.clusters[name] = cluster
 	c.addShutdownTask(cluster.Shutdown)
@@ -59,7 +60,7 @@ func (c *Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, glo
 		ReasonableFollowerLSNLag: globalCfg.Qumomf.ReasonableFollowerLSNLag,
 		ReasonableFollowerIdle:   globalCfg.Qumomf.ReasonableFollowerIdle.Seconds(),
 	})
-	failover := orchestrator.NewDefaultFailover(cluster, orchestrator.FailoverConfig{
+	failover := orchestrator.NewDefaultFailover(cluster, relStorage, orchestrator.FailoverConfig{
 		Hooker:                      hooker,
 		Elector:                     elector,
 		ReplicaSetRecoveryBlockTime: globalCfg.Qumomf.ShardRecoveryBlockTime,

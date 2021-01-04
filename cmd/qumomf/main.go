@@ -22,6 +22,7 @@ import (
 	"github.com/shmel1k/qumomf/internal/config"
 	"github.com/shmel1k/qumomf/internal/coordinator"
 	"github.com/shmel1k/qumomf/internal/qumhttp"
+	"github.com/shmel1k/qumomf/internal/storage"
 )
 
 var (
@@ -59,9 +60,14 @@ func main() {
 		logger.Warn().Msg("No clusters are found in the configuration")
 	}
 
+	relStorage, err := newStorage(cfg)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to init sqlite storage")
+	}
+
 	qCoordinator := coordinator.New(logger)
 	for clusterName, clusterCfg := range cfg.Clusters {
-		err = qCoordinator.RegisterCluster(clusterName, clusterCfg, cfg)
+		err = qCoordinator.RegisterCluster(clusterName, relStorage, clusterCfg, cfg)
 		if err != nil {
 			logger.Err(err).Msgf("Could not register cluster with name %s", clusterName)
 			continue
@@ -80,6 +86,15 @@ func main() {
 	if err != nil {
 		logger.Err(err).Msg("Failed to shutting down the HTTP server gracefully")
 	}
+}
+
+func newStorage(cfg *config.Config) (storage.Storage, error) {
+	fileName := cfg.Qumomf.Storage.Filename
+	if fileName == "" {
+		fileName = "qumomf.db"
+	}
+
+	return storage.NewStorage(context.TODO(), fileName)
 }
 
 func initLogger(cfg *config.Config) zerolog.Logger {

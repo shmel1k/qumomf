@@ -66,6 +66,10 @@ qumomf:
     post_unsuccessful_failover:
       - "echo 'Failed to recover from {failureType} on {failureCluster}. Set: {failureReplicaSetUUID}; Failed: {failedURI}' >> /tmp/qumomf_recovery.log"
 
+  # Sqllite storage to save snapshots and recoveries information
+  storage:
+    filename: 'sqllite.db'
+
 # Tarantool connection options.
 # Can be overwritten by cluster-specific options.
 connection:
