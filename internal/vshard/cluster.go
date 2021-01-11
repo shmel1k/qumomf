@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shmel1k/qumomf/internal/storage"
-
 	"github.com/rs/zerolog"
 	"github.com/viciious/go-tarantool"
 
@@ -102,10 +100,10 @@ type Cluster struct {
 	mutex  sync.RWMutex
 	logger zerolog.Logger
 
-	relStorage storage.Storage
+	onClusterDiscoveredCB func(string, int64, []byte)
 }
 
-func NewCluster(name string, relStorage storage.Storage, cfg config.ClusterConfig) *Cluster {
+func NewCluster(name string, onClusterDiscovered func(string, int64, []byte), cfg config.ClusterConfig) *Cluster {
 	connTemplate := ConnOptions{
 		User:           *cfg.Connection.User,
 		Password:       *cfg.Connection.Password,
@@ -119,8 +117,8 @@ func NewCluster(name string, relStorage storage.Storage, cfg config.ClusterConfi
 		snapshot: Snapshot{
 			Created: util.Timestamp(),
 		},
-		readOnly:   *cfg.ReadOnly,
-		relStorage: relStorage,
+		readOnly:              *cfg.ReadOnly,
+		onClusterDiscoveredCB: onClusterDiscovered,
 	}
 	c.snapshot.UpdatePriorities(cfg.Priorities)
 
@@ -392,14 +390,7 @@ func (c *Cluster) saveSnapshotToStorage(ns Snapshot) {
 		return
 	}
 
-	err = c.relStorage.SaveSnapshot(context.Background(), storage.SaveRequest{
-		ClusterName: c.Name,
-		CreatedAt:   ns.Created,
-		Data:        data,
-	})
-	if err != nil {
-		c.logger.Error().Err(err).Msg("failed to save snapshot to storage")
-	}
+	c.onClusterDiscoveredCB(c.Name, ns.Created, data)
 }
 
 func (c *Cluster) logDiscoveredReplicaSet(set ReplicaSet) {

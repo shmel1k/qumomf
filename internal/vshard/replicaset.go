@@ -29,7 +29,7 @@ func (set ReplicaSet) Copy() ReplicaSet {
 		UUID:       set.UUID,
 		MasterUUID: set.MasterUUID,
 		MasterURI:  set.MasterURI,
-		Instances:  make([]Instance, 0, len(set.Instances)),
+		Instances:  make([]Instance, len(set.Instances)),
 	}
 	copy(r.Instances, set.Instances)
 

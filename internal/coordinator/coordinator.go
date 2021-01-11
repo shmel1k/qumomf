@@ -1,6 +1,7 @@
 package coordinator
 
 import (
+	"context"
 	"errors"
 
 	"github.com/shmel1k/qumomf/internal/config"
@@ -28,23 +29,26 @@ type Coordinator struct {
 	// shutdownQueue contains all shutdown tasks to be
 	// executed when coordinator is going to exit.
 	shutdownQueue []shutdownTask
+
+	relStorage storage.Storage
 }
 
-func New(logger zerolog.Logger) *Coordinator {
+func New(logger zerolog.Logger, relStorage storage.Storage) *Coordinator {
 	return &Coordinator{
-		logger:   logger,
-		clusters: make(map[string]*vshard.Cluster),
+		logger:     logger,
+		clusters:   make(map[string]*vshard.Cluster),
+		relStorage: relStorage,
 	}
 }
 
-func (c *Coordinator) RegisterCluster(name string, relStorage storage.Storage, cfg config.ClusterConfig, globalCfg *config.Config) error {
+func (c *Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, globalCfg *config.Config) error {
 	if _, exist := c.clusters[name]; exist {
 		return ErrClusterAlreadyExist
 	}
 
 	clusterLogger := c.logger.With().Str("cluster", name).Logger()
 
-	cluster := vshard.NewCluster(name, relStorage, cfg)
+	cluster := vshard.NewCluster(name, c.onClusterDiscovered, cfg)
 	cluster.SetLogger(clusterLogger)
 	c.clusters[name] = cluster
 	c.addShutdownTask(cluster.Shutdown)
@@ -60,7 +64,7 @@ func (c *Coordinator) RegisterCluster(name string, relStorage storage.Storage, c
 		ReasonableFollowerLSNLag: globalCfg.Qumomf.ReasonableFollowerLSNLag,
 		ReasonableFollowerIdle:   globalCfg.Qumomf.ReasonableFollowerIdle.Seconds(),
 	})
-	failover := orchestrator.NewDefaultFailover(cluster, relStorage, orchestrator.FailoverConfig{
+	failover := orchestrator.NewDefaultFailover(cluster, c.onClusterRecovered, orchestrator.FailoverConfig{
 		Hooker:                      hooker,
 		Elector:                     elector,
 		ReplicaSetRecoveryBlockTime: globalCfg.Qumomf.ShardRecoveryBlockTime,
@@ -72,6 +76,28 @@ func (c *Coordinator) RegisterCluster(name string, relStorage storage.Storage, c
 	failover.Serve(analysisStream)
 
 	return nil
+}
+
+func (c *Coordinator) onClusterDiscovered(clusterName string, createdAt int64, data []byte) {
+	err := c.relStorage.SaveSnapshot(context.Background(), storage.SaveRequest{
+		ClusterName: clusterName,
+		CreatedAt:   createdAt,
+		Data:        data,
+	})
+	if err != nil {
+		c.logger.Err(err).Str("cluster_name", clusterName).Msg("failed to save cluster snapshot")
+	}
+}
+
+func (c *Coordinator) onClusterRecovered(clusterName string, createdAt int64, data []byte) {
+	err := c.relStorage.SaveRecovery(context.Background(), storage.SaveRequest{
+		ClusterName: clusterName,
+		CreatedAt:   createdAt,
+		Data:        data,
+	})
+	if err != nil {
+		c.logger.Err(err).Str("cluster_name", clusterName).Msg("failed to save cluster recovery data")
+	}
 }
 
 func (c *Coordinator) Shutdown() {

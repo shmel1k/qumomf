@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"os"
+	"time"
 
 	// sqlite3 driver
 	_ "github.com/mattn/go-sqlite3"
@@ -54,19 +55,32 @@ type Storage interface {
 }
 
 type storage struct {
-	db *sql.DB
+	db     *sql.DB
+	config Config
 }
 
-func NewStorage(ctx context.Context, fileName string) (Storage, error) {
-	_, err := createFileIfNotExists(fileName)
+type Config struct {
+	FileName       string
+	ConnectTimeout time.Duration
+	QueryTimeout   time.Duration
+}
+
+func NewStorage(cfg Config) (Storage, error) {
+	cfg = validateConfig(cfg)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ConnectTimeout)
+	defer cancel()
+
+	_, err := createFileIfNotExists(cfg.FileName)
 	if err != nil {
 		return &storage{}, nil
 	}
 
-	db, err := sql.Open("sqlite3", fileName)
+	db, err := sql.Open("sqlite3", cfg.FileName)
 	if err != nil {
 		return &storage{}, err
 	}
+
+	db.SetMaxOpenConns(1)
 
 	err = createTables(ctx, db)
 	if err != nil {
@@ -74,12 +88,32 @@ func NewStorage(ctx context.Context, fileName string) (Storage, error) {
 	}
 
 	return &storage{
-		db: db,
+		db:     db,
+		config: cfg,
 	}, nil
 }
 
+func validateConfig(cfg Config) Config {
+	if cfg.FileName == "" {
+		cfg.FileName = "qumomf.db"
+	}
+
+	if cfg.QueryTimeout == 0 {
+		cfg.QueryTimeout = time.Second
+	}
+
+	if cfg.ConnectTimeout == 0 {
+		cfg.ConnectTimeout = time.Second
+	}
+
+	return cfg
+}
+
 func (s *storage) SaveSnapshot(ctx context.Context, sr SaveRequest) error {
-	stmt, err := s.db.Prepare(querySaveSnapshot)
+	ctx, cancel := context.WithTimeout(ctx, s.config.QueryTimeout)
+	defer cancel()
+
+	stmt, err := s.db.PrepareContext(ctx, querySaveSnapshot)
 	if err != nil {
 		return err
 	}
@@ -90,7 +124,10 @@ func (s *storage) SaveSnapshot(ctx context.Context, sr SaveRequest) error {
 }
 
 func (s *storage) SaveRecovery(ctx context.Context, sr SaveRequest) error {
-	stmt, err := s.db.Prepare(querySaveRecoveries)
+	ctx, cancel := context.WithTimeout(ctx, s.config.QueryTimeout)
+	defer cancel()
+
+	stmt, err := s.db.PrepareContext(ctx, querySaveRecoveries)
 	if err != nil {
 		return err
 	}
@@ -101,7 +138,10 @@ func (s *storage) SaveRecovery(ctx context.Context, sr SaveRequest) error {
 }
 
 func (s *storage) GetClusterLastSnapshot(ctx context.Context, clusterName string) ([]byte, error) {
-	stmt, err := s.db.Prepare(queryGetLastSnapshot)
+	ctx, cancel := context.WithTimeout(ctx, s.config.QueryTimeout)
+	defer cancel()
+
+	stmt, err := s.db.PrepareContext(ctx, queryGetLastSnapshot)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +157,10 @@ func (s *storage) GetClusterLastSnapshot(ctx context.Context, clusterName string
 }
 
 func (s *storage) GetRecoveries(ctx context.Context, clusterName string) ([][]byte, error) {
-	stmt, err := s.db.Prepare(queryGetRecoveries)
+	ctx, cancel := context.WithTimeout(ctx, s.config.QueryTimeout)
+	defer cancel()
+
+	stmt, err := s.db.PrepareContext(ctx, queryGetRecoveries)
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +171,7 @@ func (s *storage) GetRecoveries(ctx context.Context, clusterName string) ([][]by
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		err = rows.Scan(&data)

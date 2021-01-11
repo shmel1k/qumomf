@@ -39,7 +39,11 @@ func TestStorage(t *testing.T) {
 func (s *storageSuite) BeforeTest(_, _ string) {
 	t := s.T()
 
-	relStorage, err := NewStorage(context.Background(), tFileName)
+	relStorage, err := NewStorage(Config{
+		FileName:       tFileName,
+		ConnectTimeout: 3 * time.Second,
+		QueryTimeout:   3 * time.Second,
+	})
 	require.NoError(t, err)
 	require.NotNil(t, relStorage)
 

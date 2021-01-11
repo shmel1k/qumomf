@@ -65,9 +65,9 @@ func main() {
 		logger.Fatal().Err(err).Msg("failed to init sqlite storage")
 	}
 
-	qCoordinator := coordinator.New(logger)
+	qCoordinator := coordinator.New(logger, relStorage)
 	for clusterName, clusterCfg := range cfg.Clusters {
-		err = qCoordinator.RegisterCluster(clusterName, relStorage, clusterCfg, cfg)
+		err = qCoordinator.RegisterCluster(clusterName, clusterCfg, cfg)
 		if err != nil {
 			logger.Err(err).Msgf("Could not register cluster with name %s", clusterName)
 			continue
@@ -89,12 +89,11 @@ func main() {
 }
 
 func newStorage(cfg *config.Config) (storage.Storage, error) {
-	fileName := cfg.Qumomf.Storage.Filename
-	if fileName == "" {
-		fileName = "qumomf.db"
-	}
-
-	return storage.NewStorage(context.TODO(), fileName)
+	return storage.NewStorage(storage.Config{
+		FileName:       cfg.Qumomf.Storage.Filename,
+		ConnectTimeout: cfg.Qumomf.Storage.ConnectTimeout,
+		QueryTimeout:   cfg.Qumomf.Storage.QueryTimeout,
+	})
 }
 
 func initLogger(cfg *config.Config) zerolog.Logger {

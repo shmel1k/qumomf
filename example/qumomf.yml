@@ -27,6 +27,8 @@ qumomf:
       - "echo 'Failed to recover from {failureType} on {failureCluster}. Set: {failureReplicaSetUUID}; Failed: {failedURI}' >> /tmp/qumomf_recovery.log"
   storage:
     filename: 'sqllite.db'
+    connect_timeout: '1s'
+    request_timeout: '1s'
 
 connection:
   user: 'qumomf'

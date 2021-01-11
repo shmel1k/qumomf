@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shmel1k/qumomf/internal/storage"
-
 	"github.com/rs/zerolog"
 	"github.com/viciious/go-tarantool"
 
@@ -77,24 +75,24 @@ type failover struct {
 	recvSetTTL      time.Duration
 	recvInstanceTTL time.Duration
 
-	stop       chan struct{}
-	logger     zerolog.Logger
-	relStorage storage.Storage
+	stop   chan struct{}
+	logger zerolog.Logger
 
-	sampler sampler
+	onClusterRecoveredCB func(string, int64, []byte)
+	sampler              sampler
 }
 
-func NewDefaultFailover(cluster *vshard.Cluster, relStorage storage.Storage, cfg FailoverConfig, logger zerolog.Logger) Failover {
+func NewDefaultFailover(cluster *vshard.Cluster, onClusterRecovered func(string, int64, []byte), cfg FailoverConfig, logger zerolog.Logger) Failover {
 	return &failover{
-		cluster:         cluster,
-		elector:         cfg.Elector,
-		hooker:          cfg.Hooker,
-		recoveries:      make([]*Recovery, 0),
-		recvSetTTL:      cfg.ReplicaSetRecoveryBlockTime,
-		recvInstanceTTL: cfg.InstanceRecoveryBlockTime,
-		stop:            make(chan struct{}, 1),
-		logger:          logger,
-		relStorage:      relStorage,
+		cluster:              cluster,
+		elector:              cfg.Elector,
+		hooker:               cfg.Hooker,
+		recoveries:           make([]*Recovery, 0),
+		recvSetTTL:           cfg.ReplicaSetRecoveryBlockTime,
+		recvInstanceTTL:      cfg.InstanceRecoveryBlockTime,
+		stop:                 make(chan struct{}, 1),
+		logger:               logger,
+		onClusterRecoveredCB: onClusterRecovered,
 		sampler: sampler{
 			fingerprints: map[string]string{},
 			enabled:      true,
@@ -161,7 +159,7 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 	logger.Info().Msgf("Cluster snapshot before recovery: %s", f.cluster.Dump())
 	recoveries := recvFunc(ctx, analysis)
 	for _, recv := range recoveries {
-		go f.saveRecovery(ctx, *recv)
+		go f.saveRecovery(*recv)
 		f.registryRecovery(recv)
 
 		if recv.IsSuccessful {
@@ -180,21 +178,14 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 	f.cluster.StopRecovery()
 }
 
-func (f *failover) saveRecovery(ctx context.Context, recovery Recovery) {
+func (f *failover) saveRecovery(recovery Recovery) {
 	data, err := json.Marshal(recovery)
 	if err != nil {
 		f.logger.Error().Err(err).Msg("failed to marshall recovery data")
 		return
 	}
 
-	err = f.relStorage.SaveRecovery(ctx, storage.SaveRequest{
-		ClusterName: f.cluster.Name,
-		CreatedAt:   recovery.EndTimestamp,
-		Data:        data,
-	})
-	if err != nil {
-		f.logger.Error().Err(err).Msg("failed to save recovery data to storage")
-	}
+	f.onClusterRecoveredCB(f.cluster.Name, recovery.EndTimestamp, data)
 }
 
 func (f *failover) getCheckAndRecoveryFunc(state ReplicaSetState) (rf RecoveryFunc, desc string) {

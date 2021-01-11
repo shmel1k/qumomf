@@ -55,7 +55,9 @@ type Config struct {
 			TimeoutAsync             time.Duration `yaml:"timeout_async"`
 		} `yaml:"hooks"`
 		Storage struct {
-			Filename string `yaml:"filename"`
+			Filename       string        `yaml:"filename"`
+			QueryTimeout   time.Duration `yaml:"request_timeout"`
+			ConnectTimeout time.Duration `yaml:"connect_timeout"`
 		} `yaml:"storage"`
 	} `yaml:"qumomf"`
 

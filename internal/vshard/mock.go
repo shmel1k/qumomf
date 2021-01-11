@@ -4,12 +4,11 @@ import (
 	"time"
 
 	"github.com/shmel1k/qumomf/internal/config"
-	"github.com/shmel1k/qumomf/internal/storage"
 	"github.com/shmel1k/qumomf/internal/util"
 )
 
 func MockCluster() *Cluster {
-	return NewCluster("sandbox", storage.MockedStorage{}, config.ClusterConfig{
+	return NewCluster("sandbox", mockedOnClusterDiscoverCB, config.ClusterConfig{
 		Connection: &config.ConnectConfig{
 			User:           util.NewString("qumomf"),
 			Password:       util.NewString("qumomf"),
@@ -36,3 +35,5 @@ func MockCluster() *Cluster {
 		},
 	})
 }
+
+func mockedOnClusterDiscoverCB(_ string, _ int64, _ []byte) {}
