@@ -28,8 +28,6 @@ qumomf:
       - "echo 'Recovered from {failureType} on {failureCluster}. Set: {failureReplicaSetUUID}; Failed: {failedURI}; Successor: {successorURI}' >> /tmp/qumomf_recovery.log"
     post_unsuccessful_failover:
       - "echo 'Failed to recover from {failureType} on {failureCluster}. Set: {failureReplicaSetUUID}; Failed: {failedURI}' >> /tmp/qumomf_recovery.log"
-  storage:
-    filename: 'sqllite.db'
 
 connection:
   user: 'qumomf'

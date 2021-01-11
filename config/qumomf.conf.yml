@@ -70,7 +70,7 @@ qumomf:
   storage:
     filename: 'sqlite.db'
     connect_timeout: '1s'
-    request_timeout: '1s'
+    query_timeout: '1s'
 
 # Tarantool connection options.
 # Can be overwritten by cluster-specific options.
