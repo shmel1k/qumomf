@@ -1,10 +1,14 @@
-package storage
+package sqlite
 
 import (
 	"context"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/shmel1k/qumomf/internal/storage"
+	"github.com/shmel1k/qumomf/internal/vshard"
+	"github.com/shmel1k/qumomf/internal/vshard/orchestrator"
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -13,11 +17,14 @@ import (
 var (
 	tFileName    = "tFileName.db"
 	tClusterName = "testCluster"
-	tData        = []byte(`test data`)
-	tSaveRequest = SaveRequest{
+	tSnapshot    = vshard.Snapshot{
+		Created:     123,
+		Routers:     []vshard.Router{},
+		ReplicaSets: []vshard.ReplicaSet{},
+	}
+	tRecovery = orchestrator.Recovery{
+		Type:        "test type",
 		ClusterName: tClusterName,
-		CreatedAt:   time.Now().Unix(),
-		Data:        tData,
 	}
 )
 
@@ -27,7 +34,7 @@ var (
 
 type storageSuite struct {
 	suite.Suite
-	relStorage Storage
+	db storage.Storage
 }
 
 func TestStorage(t *testing.T) {
@@ -39,15 +46,15 @@ func TestStorage(t *testing.T) {
 func (s *storageSuite) BeforeTest(_, _ string) {
 	t := s.T()
 
-	relStorage, err := NewStorage(Config{
+	db, err := NewSQLiteStorage(Config{
 		FileName:       tFileName,
 		ConnectTimeout: 3 * time.Second,
 		QueryTimeout:   3 * time.Second,
 	})
 	require.NoError(t, err)
-	require.NotNil(t, relStorage)
+	require.NotNil(t, db)
 
-	s.relStorage = relStorage
+	s.db = db
 }
 
 func (s *storageSuite) AfterTest(_, _ string) {
@@ -57,26 +64,26 @@ func (s *storageSuite) AfterTest(_, _ string) {
 
 func (s *storageSuite) TestEmptyResult() {
 	t := s.T()
-	_, err := s.relStorage.GetClusterLastSnapshot(dummyContext, tClusterName)
+	_, err := s.db.GetClusterLastSnapshot(dummyContext, tClusterName)
 	require.Equal(t, ErrEmptyResult, err)
 }
 
 func (s *storageSuite) TestSaveSnapshot() {
 	t := s.T()
-	err := s.relStorage.SaveSnapshot(dummyContext, tSaveRequest)
+	err := s.db.SaveSnapshot(dummyContext, tClusterName, tSnapshot)
 	require.NoError(t, err)
 
-	data, err := s.relStorage.GetClusterLastSnapshot(dummyContext, tClusterName)
+	snap, err := s.db.GetClusterLastSnapshot(dummyContext, tClusterName)
 	require.NoError(t, err)
-	require.Equal(t, tData, data)
+	require.Equal(t, tSnapshot, snap)
 }
 
 func (s *storageSuite) TestSaveRecovery() {
 	t := s.T()
-	err := s.relStorage.SaveRecovery(dummyContext, tSaveRequest)
+	err := s.db.SaveRecovery(dummyContext, tRecovery)
 	require.NoError(t, err)
 
-	results, err := s.relStorage.GetRecoveries(dummyContext, tClusterName)
+	results, err := s.db.GetRecoveries(dummyContext, tClusterName)
 	require.NoError(t, err)
-	require.Equal(t, [][]byte{tData}, results)
+	require.Equal(t, []orchestrator.Recovery{tRecovery}, results)
 }

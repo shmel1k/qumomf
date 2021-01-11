@@ -13,6 +13,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/shmel1k/qumomf/internal/storage"
+	"github.com/shmel1k/qumomf/internal/storage/sqlite"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -22,7 +25,6 @@ import (
 	"github.com/shmel1k/qumomf/internal/config"
 	"github.com/shmel1k/qumomf/internal/coordinator"
 	"github.com/shmel1k/qumomf/internal/qumhttp"
-	"github.com/shmel1k/qumomf/internal/storage"
 )
 
 var (
@@ -60,12 +62,12 @@ func main() {
 		logger.Warn().Msg("No clusters are found in the configuration")
 	}
 
-	relStorage, err := newStorage(cfg)
+	db, err := newStorage(cfg)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to init sqlite storage")
 	}
 
-	qCoordinator := coordinator.New(logger, relStorage)
+	qCoordinator := coordinator.New(logger, db)
 	for clusterName, clusterCfg := range cfg.Clusters {
 		err = qCoordinator.RegisterCluster(clusterName, clusterCfg, cfg)
 		if err != nil {
@@ -89,7 +91,7 @@ func main() {
 }
 
 func newStorage(cfg *config.Config) (storage.Storage, error) {
-	return storage.NewStorage(storage.Config{
+	return sqlite.NewSQLiteStorage(sqlite.Config{
 		FileName:       cfg.Qumomf.Storage.Filename,
 		ConnectTimeout: cfg.Qumomf.Storage.ConnectTimeout,
 		QueryTimeout:   cfg.Qumomf.Storage.QueryTimeout,

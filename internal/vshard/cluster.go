@@ -100,10 +100,10 @@ type Cluster struct {
 	mutex  sync.RWMutex
 	logger zerolog.Logger
 
-	onClusterDiscoveredCB func(string, int64, []byte)
+	onClusterDiscoveredCB func(string, Snapshot)
 }
 
-func NewCluster(name string, onClusterDiscovered func(string, int64, []byte), cfg config.ClusterConfig) *Cluster {
+func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
 	connTemplate := ConnOptions{
 		User:           *cfg.Connection.User,
 		Password:       *cfg.Connection.Password,
@@ -117,8 +117,7 @@ func NewCluster(name string, onClusterDiscovered func(string, int64, []byte), cf
 		snapshot: Snapshot{
 			Created: util.Timestamp(),
 		},
-		readOnly:              *cfg.ReadOnly,
-		onClusterDiscoveredCB: onClusterDiscovered,
+		readOnly: *cfg.ReadOnly,
 	}
 	c.snapshot.UpdatePriorities(cfg.Priorities)
 
@@ -132,6 +131,10 @@ func NewCluster(name string, onClusterDiscovered func(string, int64, []byte), cf
 	c.SetLogger(zerolog.Nop())
 
 	return c
+}
+
+func (c *Cluster) SetOnClusterDiscoveredCB(onClusterDiscovered func(string, Snapshot)) {
+	c.onClusterDiscoveredCB = onClusterDiscovered
 }
 
 func (c *Cluster) SetLogger(logger zerolog.Logger) {
@@ -377,20 +380,11 @@ func (c *Cluster) Discover() {
 		ns.UpdatePriorities(c.snapshot.priorities)
 		c.snapshot = ns
 
-		go c.saveSnapshotToStorage(ns.Copy())
+		if c.onClusterDiscoveredCB != nil {
+			go c.onClusterDiscoveredCB(c.Name, ns)
+		}
 	}
 	c.mutex.Unlock()
-}
-
-func (c *Cluster) saveSnapshotToStorage(ns Snapshot) {
-	data, err := json.Marshal(ns)
-	if err != nil {
-		c.logger.Error().Err(err).Msg("failed to marshall snapshot data")
-
-		return
-	}
-
-	c.onClusterDiscoveredCB(c.Name, ns.Created, data)
 }
 
 func (c *Cluster) logDiscoveredReplicaSet(set ReplicaSet) {

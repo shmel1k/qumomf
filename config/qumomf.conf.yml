@@ -66,7 +66,7 @@ qumomf:
     post_unsuccessful_failover:
       - "echo 'Failed to recover from {failureType} on {failureCluster}. Set: {failureReplicaSetUUID}; Failed: {failedURI}' >> /tmp/qumomf_recovery.log"
 
-  # Sqllite storage to save snapshots and recoveries information
+  # Local persistent storage to save snapshots, recoveries and other useful data
   storage:
     filename: 'sqlite.db'
     connect_timeout: '1s'

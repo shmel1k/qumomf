@@ -8,7 +8,7 @@ import (
 )
 
 func MockCluster() *Cluster {
-	return NewCluster("sandbox", mockedOnClusterDiscoveredCB, config.ClusterConfig{
+	return NewCluster("sandbox", config.ClusterConfig{
 		Connection: &config.ConnectConfig{
 			User:           util.NewString("qumomf"),
 			Password:       util.NewString("qumomf"),
@@ -35,5 +35,3 @@ func MockCluster() *Cluster {
 		},
 	})
 }
-
-func mockedOnClusterDiscoveredCB(_ string, _ int64, _ []byte) {}

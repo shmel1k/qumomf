@@ -30,14 +30,14 @@ type Coordinator struct {
 	// executed when coordinator is going to exit.
 	shutdownQueue []shutdownTask
 
-	relStorage storage.Storage
+	db storage.Storage
 }
 
-func New(logger zerolog.Logger, relStorage storage.Storage) *Coordinator {
+func New(logger zerolog.Logger, db storage.Storage) *Coordinator {
 	return &Coordinator{
-		logger:     logger,
-		clusters:   make(map[string]*vshard.Cluster),
-		relStorage: relStorage,
+		logger:   logger,
+		clusters: make(map[string]*vshard.Cluster),
+		db:       db,
 	}
 }
 
@@ -48,8 +48,9 @@ func (c *Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, glo
 
 	clusterLogger := c.logger.With().Str("cluster", name).Logger()
 
-	cluster := vshard.NewCluster(name, c.onClusterDiscovered, cfg)
+	cluster := vshard.NewCluster(name, cfg)
 	cluster.SetLogger(clusterLogger)
+	cluster.SetOnClusterDiscoveredCB(c.onClusterDiscovered)
 	c.clusters[name] = cluster
 	c.addShutdownTask(cluster.Shutdown)
 
@@ -64,12 +65,14 @@ func (c *Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, glo
 		ReasonableFollowerLSNLag: globalCfg.Qumomf.ReasonableFollowerLSNLag,
 		ReasonableFollowerIdle:   globalCfg.Qumomf.ReasonableFollowerIdle.Seconds(),
 	})
-	failover := orchestrator.NewDefaultFailover(cluster, c.onClusterRecovered, orchestrator.FailoverConfig{
+	failover := orchestrator.NewDefaultFailover(cluster, orchestrator.FailoverConfig{
 		Hooker:                      hooker,
 		Elector:                     elector,
 		ReplicaSetRecoveryBlockTime: globalCfg.Qumomf.ShardRecoveryBlockTime,
 		InstanceRecoveryBlockTime:   globalCfg.Qumomf.InstanceRecoveryBlockTime,
 	}, clusterLogger)
+	failover.SetOnClusterRecoveredCB(c.onClusterRecovered)
+
 	c.addShutdownTask(failover.Shutdown)
 
 	analysisStream := mon.Serve()
@@ -78,25 +81,17 @@ func (c *Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, glo
 	return nil
 }
 
-func (c *Coordinator) onClusterDiscovered(clusterName string, createdAt int64, data []byte) {
-	err := c.relStorage.SaveSnapshot(context.Background(), storage.SaveRequest{
-		ClusterName: clusterName,
-		CreatedAt:   createdAt,
-		Data:        data,
-	})
+func (c *Coordinator) onClusterDiscovered(clusterName string, snapshot vshard.Snapshot) {
+	err := c.db.SaveSnapshot(context.Background(), clusterName, snapshot)
 	if err != nil {
 		c.logger.Err(err).Str("cluster_name", clusterName).Msg("failed to save cluster snapshot")
 	}
 }
 
-func (c *Coordinator) onClusterRecovered(clusterName string, createdAt int64, data []byte) {
-	err := c.relStorage.SaveRecovery(context.Background(), storage.SaveRequest{
-		ClusterName: clusterName,
-		CreatedAt:   createdAt,
-		Data:        data,
-	})
+func (c *Coordinator) onClusterRecovered(recovery orchestrator.Recovery) {
+	err := c.db.SaveRecovery(context.Background(), recovery)
 	if err != nil {
-		c.logger.Err(err).Str("cluster_name", clusterName).Msg("failed to save cluster recovery data")
+		c.logger.Err(err).Str("cluster_name", recovery.ClusterName).Msg("failed to save cluster recovery data")
 	}
 }
 

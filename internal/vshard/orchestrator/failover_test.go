@@ -83,7 +83,7 @@ func (s *failoverTestSuite) Test_failover_promoteFollowerToMaster() {
 		s.Run(tt.name, func() {
 			hooker := NewBashHooker(s.logger)
 			elector := quorum.New(tt.mode, tt.opts)
-			s.failover = NewDefaultFailover(s.cluster, mockedOnClusterRecoveredCB, FailoverConfig{
+			s.failover = NewDefaultFailover(s.cluster, FailoverConfig{
 				Hooker:                      hooker,
 				Elector:                     elector,
 				ReplicaSetRecoveryBlockTime: 2 * time.Second,
@@ -175,7 +175,7 @@ func (s *failoverTestSuite) Test_failover_applyFollowerRoleToCoMasters() {
 		s.Run(tt.name, func() {
 			hooker := NewBashHooker(s.logger)
 			elector := quorum.New(tt.mode, tt.opts)
-			s.failover = NewDefaultFailover(s.cluster, mockedOnClusterRecoveredCB, FailoverConfig{
+			s.failover = NewDefaultFailover(s.cluster, FailoverConfig{
 				Hooker:                      hooker,
 				Elector:                     elector,
 				ReplicaSetRecoveryBlockTime: 2 * time.Second,
@@ -228,5 +228,3 @@ func (s *failoverTestSuite) Test_failover_applyFollowerRoleToCoMasters() {
 func TestFailover(t *testing.T) {
 	suite.Run(t, newFailoverTestSuite())
 }
-
-func mockedOnClusterRecoveredCB(_ string, _ int64, _ []byte) {}

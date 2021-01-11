@@ -2,7 +2,6 @@ package orchestrator
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -63,6 +62,7 @@ const (
 type Failover interface {
 	Serve(stream AnalysisReadStream)
 	Shutdown()
+	SetOnClusterRecoveredCB(func(Recovery))
 }
 
 type failover struct {
@@ -78,27 +78,30 @@ type failover struct {
 	stop   chan struct{}
 	logger zerolog.Logger
 
-	onClusterRecoveredCB func(string, int64, []byte)
+	onClusterRecoveredCB func(Recovery)
 	sampler              sampler
 }
 
-func NewDefaultFailover(cluster *vshard.Cluster, onClusterRecovered func(string, int64, []byte), cfg FailoverConfig, logger zerolog.Logger) Failover {
+func NewDefaultFailover(cluster *vshard.Cluster, cfg FailoverConfig, logger zerolog.Logger) Failover {
 	return &failover{
-		cluster:              cluster,
-		elector:              cfg.Elector,
-		hooker:               cfg.Hooker,
-		recoveries:           make([]*Recovery, 0),
-		recvSetTTL:           cfg.ReplicaSetRecoveryBlockTime,
-		recvInstanceTTL:      cfg.InstanceRecoveryBlockTime,
-		stop:                 make(chan struct{}, 1),
-		logger:               logger,
-		onClusterRecoveredCB: onClusterRecovered,
+		cluster:         cluster,
+		elector:         cfg.Elector,
+		hooker:          cfg.Hooker,
+		recoveries:      make([]*Recovery, 0),
+		recvSetTTL:      cfg.ReplicaSetRecoveryBlockTime,
+		recvInstanceTTL: cfg.InstanceRecoveryBlockTime,
+		stop:            make(chan struct{}, 1),
+		logger:          logger,
 		sampler: sampler{
 			fingerprints: map[string]string{},
 			enabled:      true,
 			mu:           &sync.RWMutex{},
 		},
 	}
+}
+
+func (f *failover) SetOnClusterRecoveredCB(onClusterRecovered func(Recovery)) {
+	f.onClusterRecoveredCB = onClusterRecovered
 }
 
 func (f *failover) Serve(stream AnalysisReadStream) {
@@ -159,7 +162,9 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 	logger.Info().Msgf("Cluster snapshot before recovery: %s", f.cluster.Dump())
 	recoveries := recvFunc(ctx, analysis)
 	for _, recv := range recoveries {
-		go f.saveRecovery(*recv)
+		if f.onClusterRecoveredCB != nil {
+			go f.onClusterRecoveredCB(*recv)
+		}
 		f.registryRecovery(recv)
 
 		if recv.IsSuccessful {
@@ -176,16 +181,6 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 		logger.Info().Msgf("Cluster snapshot after recovery: %s", f.cluster.Dump())
 	}
 	f.cluster.StopRecovery()
-}
-
-func (f *failover) saveRecovery(recovery Recovery) {
-	data, err := json.Marshal(recovery)
-	if err != nil {
-		f.logger.Error().Err(err).Msg("failed to marshall recovery data")
-		return
-	}
-
-	f.onClusterRecoveredCB(f.cluster.Name, recovery.EndTimestamp, data)
 }
 
 func (f *failover) getCheckAndRecoveryFunc(state ReplicaSetState) (rf RecoveryFunc, desc string) {

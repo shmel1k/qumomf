@@ -31,6 +31,9 @@ const (
 	defaultAsyncHookTimeout          = 10 * time.Minute
 	defaultMaxFollowerLSNLag         = 1000
 	defaultMaxFollowerIdle           = 5 * time.Minute
+	defaultStorageFileName           = "sqlite.db"
+	defaultStorageConnectTimeout     = time.Second
+	defaultStorageQueryTimeout       = time.Second
 )
 
 type Config struct {
@@ -178,6 +181,10 @@ func (c *Config) withDefaults() {
 	base.Hooks.Shell = defaultShellCommand
 	base.Hooks.Timeout = defaultHookTimeout
 	base.Hooks.TimeoutAsync = defaultAsyncHookTimeout
+
+	base.Storage.Filename = defaultStorageFileName
+	base.Storage.ConnectTimeout = defaultStorageConnectTimeout
+	base.Storage.QueryTimeout = defaultStorageQueryTimeout
 
 	connection := &ConnectConfig{}
 	connection.User = newString(defaultUser)
