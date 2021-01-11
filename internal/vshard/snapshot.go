@@ -13,7 +13,11 @@ func (s *Snapshot) Copy() Snapshot {
 		Created:     s.Created,
 		Routers:     make([]Router, len(s.Routers)),
 		ReplicaSets: make([]ReplicaSet, len(s.ReplicaSets)),
-		priorities:  s.priorities,
+		priorities:  make(map[string]int),
+	}
+
+	for key, value := range s.priorities {
+		dst.priorities[key] = value
 	}
 
 	copy(dst.Routers, s.Routers)

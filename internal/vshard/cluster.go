@@ -377,7 +377,7 @@ func (c *Cluster) Discover() {
 	c.mutex.Lock()
 	if c.snapshot.Created <= ns.Created {
 		ns.UpdatePriorities(c.snapshot.priorities)
-		c.snapshot = ns.Copy()
+		c.snapshot = ns
 
 		go c.saveSnapshotToStorage(ns.Copy())
 	}
