@@ -45,10 +45,11 @@ var (
 		Subsystem: "discovery",
 		Name:      "errors",
 		Help:      "Errors that happen during discovery process",
-	}, []string{"uri"})
+	}, []string{"cluster_name", "uri"})
 )
 
 func init() {
+	discoveryErrors.With(prometheus.Labels{"cluster_name": "", "uri": ""}).Add(0)
 	prometheus.MustRegister(
 		discoveryInstanceDurationsSum,
 		discoveryClusterDurationsSum,
@@ -111,8 +112,9 @@ func SetShardState(clusterName, uuid, masterURI, state string, active bool) {
 	}).Set(v)
 }
 
-func RecordDiscoveryError(uri string) {
+func RecordDiscoveryError(clusterName, uri string) {
 	discoveryErrors.With(prometheus.Labels{
-		"uri": uri,
+		"cluster_name": clusterName,
+		"uri":          uri,
 	}).Inc()
 }
