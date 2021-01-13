@@ -99,6 +99,8 @@ type Cluster struct {
 
 	mutex  sync.RWMutex
 	logger zerolog.Logger
+
+	onClusterDiscoveredCB func(string, Snapshot)
 }
 
 func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
@@ -129,6 +131,10 @@ func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
 	c.SetLogger(zerolog.Nop())
 
 	return c
+}
+
+func (c *Cluster) SetOnClusterDiscovered(onClusterDiscovered func(string, Snapshot)) {
+	c.onClusterDiscoveredCB = onClusterDiscovered
 }
 
 func (c *Cluster) SetLogger(logger zerolog.Logger) {
@@ -373,6 +379,10 @@ func (c *Cluster) Discover() {
 	if c.snapshot.Created <= ns.Created {
 		ns.UpdatePriorities(c.snapshot.priorities)
 		c.snapshot = ns
+
+		if c.onClusterDiscoveredCB != nil {
+			go c.onClusterDiscoveredCB(c.Name, ns)
+		}
 	}
 	c.mutex.Unlock()
 }

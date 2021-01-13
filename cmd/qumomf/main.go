@@ -13,6 +13,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/shmel1k/qumomf/internal/storage"
+	"github.com/shmel1k/qumomf/internal/storage/sqlite"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -59,7 +62,12 @@ func main() {
 		logger.Warn().Msg("No clusters are found in the configuration")
 	}
 
-	qCoordinator := coordinator.New(logger)
+	db, err := newStorage(cfg)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to init persistent storage")
+	}
+
+	qCoordinator := coordinator.New(logger, db)
 	for clusterName, clusterCfg := range cfg.Clusters {
 		err = qCoordinator.RegisterCluster(clusterName, clusterCfg, cfg)
 		if err != nil {
@@ -80,6 +88,14 @@ func main() {
 	if err != nil {
 		logger.Err(err).Msg("Failed to shutting down the HTTP server gracefully")
 	}
+}
+
+func newStorage(cfg *config.Config) (storage.Storage, error) {
+	return sqlite.New(sqlite.Config{
+		FileName:       cfg.Qumomf.Storage.Filename,
+		ConnectTimeout: cfg.Qumomf.Storage.ConnectTimeout,
+		QueryTimeout:   cfg.Qumomf.Storage.QueryTimeout,
+	})
 }
 
 func initLogger(cfg *config.Config) zerolog.Logger {

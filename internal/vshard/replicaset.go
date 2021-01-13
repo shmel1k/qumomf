@@ -24,6 +24,18 @@ type ReplicaSet struct {
 	Instances []Instance `json:"instances"`
 }
 
+func (set ReplicaSet) Copy() ReplicaSet {
+	r := ReplicaSet{
+		UUID:       set.UUID,
+		MasterUUID: set.MasterUUID,
+		MasterURI:  set.MasterURI,
+		Instances:  make([]Instance, len(set.Instances)),
+	}
+	copy(r.Instances, set.Instances)
+
+	return r
+}
+
 func (set ReplicaSet) SameAs(another *ReplicaSet) bool {
 	if set.UUID != another.UUID {
 		return false

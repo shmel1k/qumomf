@@ -62,6 +62,7 @@ const (
 type Failover interface {
 	Serve(stream AnalysisReadStream)
 	Shutdown()
+	SetOnClusterRecovered(func(Recovery))
 }
 
 type failover struct {
@@ -77,7 +78,8 @@ type failover struct {
 	stop   chan struct{}
 	logger zerolog.Logger
 
-	sampler sampler
+	onClusterRecoveredCB func(Recovery)
+	sampler              sampler
 }
 
 func NewDefaultFailover(cluster *vshard.Cluster, cfg FailoverConfig, logger zerolog.Logger) Failover {
@@ -96,6 +98,10 @@ func NewDefaultFailover(cluster *vshard.Cluster, cfg FailoverConfig, logger zero
 			mu:           &sync.RWMutex{},
 		},
 	}
+}
+
+func (f *failover) SetOnClusterRecovered(onClusterRecovered func(Recovery)) {
+	f.onClusterRecoveredCB = onClusterRecovered
 }
 
 func (f *failover) Serve(stream AnalysisReadStream) {
@@ -156,6 +162,9 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 	logger.Info().Msgf("Cluster snapshot before recovery: %s", f.cluster.Dump())
 	recoveries := recvFunc(ctx, analysis)
 	for _, recv := range recoveries {
+		if f.onClusterRecoveredCB != nil {
+			go f.onClusterRecoveredCB(*recv)
+		}
 		f.registryRecovery(recv)
 
 		if recv.IsSuccessful {

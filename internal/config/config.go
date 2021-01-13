@@ -31,6 +31,9 @@ const (
 	defaultAsyncHookTimeout          = 10 * time.Minute
 	defaultMaxFollowerLSNLag         = 1000
 	defaultMaxFollowerIdle           = 5 * time.Minute
+	defaultStorageFileName           = "qumomf.db"
+	defaultStorageConnectTimeout     = time.Second
+	defaultStorageQueryTimeout       = time.Second
 )
 
 type Config struct {
@@ -54,6 +57,11 @@ type Config struct {
 			Timeout                  time.Duration `yaml:"timeout"`
 			TimeoutAsync             time.Duration `yaml:"timeout_async"`
 		} `yaml:"hooks"`
+		Storage struct {
+			Filename       string        `yaml:"filename"`
+			QueryTimeout   time.Duration `yaml:"query_timeout"`
+			ConnectTimeout time.Duration `yaml:"connect_timeout"`
+		} `yaml:"storage"`
 	} `yaml:"qumomf"`
 
 	// Connection contains the default connection options for each instance in clusters.
@@ -173,6 +181,10 @@ func (c *Config) withDefaults() {
 	base.Hooks.Shell = defaultShellCommand
 	base.Hooks.Timeout = defaultHookTimeout
 	base.Hooks.TimeoutAsync = defaultAsyncHookTimeout
+
+	base.Storage.Filename = defaultStorageFileName
+	base.Storage.ConnectTimeout = defaultStorageConnectTimeout
+	base.Storage.QueryTimeout = defaultStorageQueryTimeout
 
 	connection := &ConnectConfig{}
 	connection.User = newString(defaultUser)

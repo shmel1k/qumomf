@@ -50,6 +50,11 @@ func TestSetup_ValidPath(t *testing.T) {
 	assert.Equal(t, []string{"echo 'Recovered from {failureType} on {failureCluster}. Set: {failureReplicaSetUUID}; Failed: {failedURI}; Successor: {successorURI}' >> /tmp/qumomf_recovery.log"}, hooks.PostSuccessfulFailover)
 	assert.Equal(t, []string{"echo 'Failed to recover from {failureType} on {failureCluster}. Set: {failureReplicaSetUUID}; Failed: {failedURI}' >> /tmp/qumomf_recovery.log"}, hooks.PostUnsuccessfulFailover)
 
+	storage := cfg.Qumomf.Storage
+	assert.Equal(t, "sqlite.db", storage.Filename)
+	assert.Equal(t, time.Second, storage.QueryTimeout)
+	assert.Equal(t, time.Second, storage.ConnectTimeout)
+
 	assert.Equal(t, 500*time.Millisecond, *cfg.Connection.ConnectTimeout)
 	assert.Equal(t, 1*time.Second, *cfg.Connection.RequestTimeout)
 

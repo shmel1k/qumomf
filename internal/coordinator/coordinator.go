@@ -1,14 +1,16 @@
 package coordinator
 
 import (
+	"context"
 	"errors"
-
-	"github.com/rs/zerolog"
 
 	"github.com/shmel1k/qumomf/internal/config"
 	"github.com/shmel1k/qumomf/internal/quorum"
+	"github.com/shmel1k/qumomf/internal/storage"
 	"github.com/shmel1k/qumomf/internal/vshard"
 	"github.com/shmel1k/qumomf/internal/vshard/orchestrator"
+
+	"github.com/rs/zerolog"
 )
 
 var (
@@ -27,12 +29,15 @@ type Coordinator struct {
 	// shutdownQueue contains all shutdown tasks to be
 	// executed when coordinator is going to exit.
 	shutdownQueue []shutdownTask
+
+	db storage.Storage
 }
 
-func New(logger zerolog.Logger) *Coordinator {
+func New(logger zerolog.Logger, db storage.Storage) *Coordinator {
 	return &Coordinator{
 		logger:   logger,
 		clusters: make(map[string]*vshard.Cluster),
+		db:       db,
 	}
 }
 
@@ -45,6 +50,7 @@ func (c *Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, glo
 
 	cluster := vshard.NewCluster(name, cfg)
 	cluster.SetLogger(clusterLogger)
+	cluster.SetOnClusterDiscovered(c.onClusterDiscovered)
 	c.clusters[name] = cluster
 	c.addShutdownTask(cluster.Shutdown)
 
@@ -65,12 +71,28 @@ func (c *Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, glo
 		ReplicaSetRecoveryBlockTime: globalCfg.Qumomf.ShardRecoveryBlockTime,
 		InstanceRecoveryBlockTime:   globalCfg.Qumomf.InstanceRecoveryBlockTime,
 	}, clusterLogger)
+	failover.SetOnClusterRecovered(c.onClusterRecovered)
+
 	c.addShutdownTask(failover.Shutdown)
 
 	analysisStream := mon.Serve()
 	failover.Serve(analysisStream)
 
 	return nil
+}
+
+func (c *Coordinator) onClusterDiscovered(clusterName string, snapshot vshard.Snapshot) {
+	err := c.db.SaveSnapshot(context.Background(), clusterName, snapshot)
+	if err != nil {
+		c.logger.Err(err).Str("cluster_name", clusterName).Msg("failed to save cluster snapshot")
+	}
+}
+
+func (c *Coordinator) onClusterRecovered(recovery orchestrator.Recovery) {
+	err := c.db.SaveRecovery(context.Background(), recovery)
+	if err != nil {
+		c.logger.Err(err).Str("cluster_name", recovery.ClusterName).Msg("failed to save cluster recovery data")
+	}
 }
 
 func (c *Coordinator) Shutdown() {
