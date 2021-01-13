@@ -31,7 +31,7 @@ const (
 	defaultAsyncHookTimeout          = 10 * time.Minute
 	defaultMaxFollowerLSNLag         = 1000
 	defaultMaxFollowerIdle           = 5 * time.Minute
-	defaultStorageFileName           = "sqlite.db"
+	defaultStorageFileName           = "qumomf.db"
 	defaultStorageConnectTimeout     = time.Second
 	defaultStorageQueryTimeout       = time.Second
 )

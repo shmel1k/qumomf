@@ -7,21 +7,25 @@ import (
 	"errors"
 	"time"
 
+	"github.com/shmel1k/qumomf/internal/storage"
+	"github.com/shmel1k/qumomf/internal/vshard"
 	"github.com/shmel1k/qumomf/internal/vshard/orchestrator"
 
-	"github.com/shmel1k/qumomf/internal/vshard"
-
-	"github.com/shmel1k/qumomf/internal/storage"
+	// sqlite3 driver
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
 	querySaveSnapshot = `INSERT INTO snapshots(cluster_name, created_at, data) 
-							VALUES(?, ?, ?)`
+							VALUES(?, ?, ?)
+							ON CONFLICT(cluster_name) DO UPDATE SET
+  								created_at = excluded.created_at,
+  								data = excluded.data`
 	querySaveRecoveries = `INSERT INTO recoveries(cluster_name, created_at, data) 
 							VALUES(?, ?, ?)`
 	initDatabaseQueries = `CREATE TABLE IF NOT EXISTS snapshots (
 		"id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,		
-		"cluster_name" TEXT,
+		"cluster_name" TEXT UNIQUE,
 		"created_at" INTEGER,
 		"data" BLOB
 	  );
@@ -55,7 +59,7 @@ type Config struct {
 	QueryTimeout   time.Duration
 }
 
-func NewSQLiteStorage(cfg Config) (storage.Storage, error) {
+func New(cfg Config) (storage.Storage, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.QueryTimeout)
 	defer cancel()
 

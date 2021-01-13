@@ -3,12 +3,8 @@ package storage
 import (
 	"context"
 
-	"github.com/shmel1k/qumomf/internal/vshard/orchestrator"
-
 	"github.com/shmel1k/qumomf/internal/vshard"
-
-	// sqlite3 driver
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/shmel1k/qumomf/internal/vshard/orchestrator"
 )
 
 type Storage interface {

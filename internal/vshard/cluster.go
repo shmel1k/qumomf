@@ -133,7 +133,7 @@ func NewCluster(name string, cfg config.ClusterConfig) *Cluster {
 	return c
 }
 
-func (c *Cluster) SetOnClusterDiscoveredCB(onClusterDiscovered func(string, Snapshot)) {
+func (c *Cluster) SetOnClusterDiscovered(onClusterDiscovered func(string, Snapshot)) {
 	c.onClusterDiscoveredCB = onClusterDiscovered
 }
 

@@ -68,7 +68,7 @@ qumomf:
 
   # Local persistent storage to save snapshots, recoveries and other useful data
   storage:
-    filename: 'sqlite.db'
+    filename: 'qumomf.db'
     connect_timeout: '1s'
     query_timeout: '1s'
 

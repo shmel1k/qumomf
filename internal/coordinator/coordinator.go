@@ -50,7 +50,7 @@ func (c *Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, glo
 
 	cluster := vshard.NewCluster(name, cfg)
 	cluster.SetLogger(clusterLogger)
-	cluster.SetOnClusterDiscoveredCB(c.onClusterDiscovered)
+	cluster.SetOnClusterDiscovered(c.onClusterDiscovered)
 	c.clusters[name] = cluster
 	c.addShutdownTask(cluster.Shutdown)
 
@@ -71,7 +71,7 @@ func (c *Coordinator) RegisterCluster(name string, cfg config.ClusterConfig, glo
 		ReplicaSetRecoveryBlockTime: globalCfg.Qumomf.ShardRecoveryBlockTime,
 		InstanceRecoveryBlockTime:   globalCfg.Qumomf.InstanceRecoveryBlockTime,
 	}, clusterLogger)
-	failover.SetOnClusterRecoveredCB(c.onClusterRecovered)
+	failover.SetOnClusterRecovered(c.onClusterRecovered)
 
 	c.addShutdownTask(failover.Shutdown)
 

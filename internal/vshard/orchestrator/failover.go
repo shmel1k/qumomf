@@ -62,7 +62,7 @@ const (
 type Failover interface {
 	Serve(stream AnalysisReadStream)
 	Shutdown()
-	SetOnClusterRecoveredCB(func(Recovery))
+	SetOnClusterRecovered(func(Recovery))
 }
 
 type failover struct {
@@ -100,7 +100,7 @@ func NewDefaultFailover(cluster *vshard.Cluster, cfg FailoverConfig, logger zero
 	}
 }
 
-func (f *failover) SetOnClusterRecoveredCB(onClusterRecovered func(Recovery)) {
+func (f *failover) SetOnClusterRecovered(onClusterRecovered func(Recovery)) {
 	f.onClusterRecoveredCB = onClusterRecovered
 }
 

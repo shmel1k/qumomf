@@ -46,7 +46,7 @@ func TestStorage(t *testing.T) {
 func (s *storageSuite) BeforeTest(_, _ string) {
 	t := s.T()
 
-	db, err := NewSQLiteStorage(Config{
+	db, err := New(Config{
 		FileName:       tFileName,
 		ConnectTimeout: 3 * time.Second,
 		QueryTimeout:   3 * time.Second,

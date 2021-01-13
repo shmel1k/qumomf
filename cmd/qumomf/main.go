@@ -64,7 +64,7 @@ func main() {
 
 	db, err := newStorage(cfg)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to init sqlite storage")
+		logger.Fatal().Err(err).Msg("failed to init persistent storage")
 	}
 
 	qCoordinator := coordinator.New(logger, db)
@@ -91,7 +91,7 @@ func main() {
 }
 
 func newStorage(cfg *config.Config) (storage.Storage, error) {
-	return sqlite.NewSQLiteStorage(sqlite.Config{
+	return sqlite.New(sqlite.Config{
 		FileName:       cfg.Qumomf.Storage.Filename,
 		ConnectTimeout: cfg.Qumomf.Storage.ConnectTimeout,
 		QueryTimeout:   cfg.Qumomf.Storage.QueryTimeout,
