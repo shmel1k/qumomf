@@ -2,9 +2,12 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/shmel1k/qumomf/internal/storage"
 	"github.com/shmel1k/qumomf/internal/vshard"
@@ -34,7 +37,8 @@ var (
 
 type storageSuite struct {
 	suite.Suite
-	db storage.Storage
+	db       storage.Storage
+	sqliteDB *sql.DB
 }
 
 func TestStorage(t *testing.T) {
@@ -45,6 +49,10 @@ func TestStorage(t *testing.T) {
 
 func (s *storageSuite) BeforeTest(_, _ string) {
 	t := s.T()
+
+	sqliteDB, err := sql.Open("sqlite3", tFileName)
+	require.NoError(t, err)
+	s.sqliteDB = sqliteDB
 
 	db, err := New(Config{
 		FileName:       tFileName,
@@ -86,4 +94,27 @@ func (s *storageSuite) TestSaveRecovery() {
 	results, err := s.db.GetRecoveries(dummyContext, tClusterName)
 	require.NoError(t, err)
 	require.Equal(t, []orchestrator.Recovery{tRecovery}, results)
+}
+
+func (s *storageSuite) TestSaveSnapshot_ShouldNotDuplicateSnapshots() {
+	t := s.T()
+	var lastCreatedAt int64
+	for i := 0; i < 3; i++ {
+		lastCreatedAt = time.Now().Unix()
+		err := s.db.SaveSnapshot(dummyContext, tClusterName, vshard.Snapshot{
+			Created: lastCreatedAt,
+		})
+		require.NoError(t, err)
+	}
+
+	snap, err := s.db.GetClusterLastSnapshot(dummyContext, tClusterName)
+	require.NoError(t, err)
+	assert.Equal(t, snap.Created, lastCreatedAt)
+
+	expectedSnapshotsCount := 1
+	var snapshotsCount int
+	row := s.sqliteDB.QueryRow("select count(1) from snapshots where cluster_name = ?", tClusterName)
+	err = row.Scan(&snapshotsCount)
+	require.NoError(t, err)
+	assert.Equal(t, expectedSnapshotsCount, snapshotsCount)
 }
