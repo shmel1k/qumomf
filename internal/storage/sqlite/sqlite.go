@@ -42,6 +42,8 @@ const (
 	queryGetRecoveries = `SELECT data
 		FROM recoveries
 		WHERE cluster_name = ?`
+	queryGetClusters = `SELECT cluster_name, data
+		FROM snapshots`
 )
 
 var (
@@ -81,6 +83,35 @@ func New(cfg Config) (storage.Storage, error) {
 	}, nil
 }
 
+func (s *sqlite) GetClusters(ctx context.Context) ([]storage.ClusterSnapshotResp, error) {
+	ctx, cancel := context.WithTimeout(ctx, s.config.QueryTimeout)
+	defer cancel()
+
+	rows, err := s.db.QueryContext(ctx, queryGetClusters)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]storage.ClusterSnapshotResp, 0)
+	var snapResp storage.ClusterSnapshotResp
+	data := make([]byte, 0)
+	for rows.Next() {
+		err = rows.Scan(&snapResp.Name, &data)
+		if err != nil {
+			return nil, err
+		}
+
+		err = json.Unmarshal(data, &snapResp.Snapshot)
+		if err != nil {
+			return nil, err
+		}
+
+		resp = append(resp, snapResp)
+	}
+
+	return resp, nil
+}
+
 func (s *sqlite) SaveSnapshot(ctx context.Context, clusterName string, snapshot vshard.Snapshot) error {
 	ctx, cancel := context.WithTimeout(ctx, s.config.QueryTimeout)
 	defer cancel()
@@ -109,7 +140,7 @@ func (s *sqlite) SaveRecovery(ctx context.Context, recovery orchestrator.Recover
 	return err
 }
 
-func (s *sqlite) GetClusterLastSnapshot(ctx context.Context, clusterName string) (vshard.Snapshot, error) {
+func (s *sqlite) GetClusterSnapshot(ctx context.Context, clusterName string) (vshard.Snapshot, error) {
 	ctx, cancel := context.WithTimeout(ctx, s.config.QueryTimeout)
 	defer cancel()
 
