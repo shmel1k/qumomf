@@ -8,9 +8,19 @@ type ClusterInfo struct {
 	RoutersCount int    `json:"routers_count"`
 }
 
-type AlertInfo struct {
+type AlertsResponse struct {
+	InstancesAlerts []InstanceAlerts `json:"instances_alerts"`
+	RoutersAlerts   []RoutersAlerts  `json:"routers_alerts"`
+}
+
+type InstanceAlerts struct {
 	ClusterName string                `json:"cluster_name"`
 	ShardUUID   vshard.ReplicaSetUUID `json:"shard_uuid"`
 	InstanceURI string                `json:"instance_uri"`
 	Alerts      []vshard.Alert        `json:"alerts"`
+}
+
+type RoutersAlerts struct {
+	URI    string         `json:"uri"`
+	Alerts []vshard.Alert `json:"alerts"`
 }

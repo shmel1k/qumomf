@@ -15,13 +15,13 @@ var (
 )
 
 type Service interface {
-	GetClustersList(context.Context) ([]ClusterInfo, error)
-	GetCluster(context.Context, string) (vshard.Snapshot, error)
-	GetShard(context.Context, string, vshard.ReplicaSetUUID) (vshard.ReplicaSet, error)
-	GetInstance(context.Context, string, vshard.ReplicaSetUUID, vshard.InstanceUUID) (vshard.Instance, error)
-	GetRecoveries(context.Context, string, vshard.ReplicaSetUUID) ([]orchestrator.Recovery, error)
-	Alerts(context.Context) ([]AlertInfo, error)
-	ClusterAlerts(context.Context, string) ([]AlertInfo, error)
+	ClustersList(context.Context) ([]ClusterInfo, error)
+	ClusterSnapshot(context.Context, string) (vshard.Snapshot, error)
+	ReplicaSet(context.Context, string, vshard.ReplicaSetUUID) (vshard.ReplicaSet, error)
+	Instance(context.Context, string, vshard.ReplicaSetUUID, vshard.InstanceUUID) (vshard.Instance, error)
+	Recoveries(context.Context, string, vshard.ReplicaSetUUID) ([]orchestrator.Recovery, error)
+	Alerts(context.Context) (AlertsResponse, error)
+	ClusterAlerts(context.Context, string) (AlertsResponse, error)
 }
 
 func NewService(db storage.Storage) Service {
@@ -34,7 +34,7 @@ type service struct {
 	db storage.Storage
 }
 
-func (s *service) GetClustersList(ctx context.Context) ([]ClusterInfo, error) {
+func (s *service) ClustersList(ctx context.Context) ([]ClusterInfo, error) {
 	clustersList, err := s.db.GetClusters(ctx)
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func (s *service) GetClustersList(ctx context.Context) ([]ClusterInfo, error) {
 	return resp, nil
 }
 
-func (s *service) GetCluster(ctx context.Context, clusterName string) (vshard.Snapshot, error) {
+func (s *service) ClusterSnapshot(ctx context.Context, clusterName string) (vshard.Snapshot, error) {
 	snap, err := s.db.GetClusterSnapshot(ctx, clusterName)
 	if err == sqlite.ErrEmptyResult {
 		return vshard.Snapshot{}, ErrEmptyResult
@@ -61,7 +61,7 @@ func (s *service) GetCluster(ctx context.Context, clusterName string) (vshard.Sn
 	return snap, err
 }
 
-func (s *service) GetShard(ctx context.Context, clusterName string, shardUUID vshard.ReplicaSetUUID) (vshard.ReplicaSet, error) {
+func (s *service) ReplicaSet(ctx context.Context, clusterName string, replicaSetUUID vshard.ReplicaSetUUID) (vshard.ReplicaSet, error) {
 	snap, err := s.db.GetClusterSnapshot(ctx, clusterName)
 	if err != nil {
 		if err == sqlite.ErrEmptyResult {
@@ -70,7 +70,7 @@ func (s *service) GetShard(ctx context.Context, clusterName string, shardUUID vs
 		return vshard.ReplicaSet{}, err
 	}
 
-	shard, err := snap.ReplicaSet(shardUUID)
+	replicaSet, err := snap.ReplicaSet(replicaSetUUID)
 	if err != nil {
 		if err == vshard.ErrReplicaSetNotFound {
 			return vshard.ReplicaSet{}, ErrEmptyResult
@@ -79,25 +79,25 @@ func (s *service) GetShard(ctx context.Context, clusterName string, shardUUID vs
 		return vshard.ReplicaSet{}, err
 	}
 
-	return shard, nil
+	return replicaSet, nil
 }
 
-func (s *service) GetInstance(ctx context.Context, clusterName string, shardUUID vshard.ReplicaSetUUID, instanceUUID vshard.InstanceUUID) (vshard.Instance, error) {
-	shard, err := s.GetShard(ctx, clusterName, shardUUID)
+func (s *service) Instance(ctx context.Context, clusterName string, replicaSetUUID vshard.ReplicaSetUUID, instanceUUID vshard.InstanceUUID) (vshard.Instance, error) {
+	replicaSet, err := s.ReplicaSet(ctx, clusterName, replicaSetUUID)
 	if err != nil {
 		return vshard.Instance{}, err
 	}
 
-	for i := range shard.Instances {
-		if shard.Instances[i].UUID == instanceUUID {
-			return shard.Instances[i], nil
+	for i := range replicaSet.Instances {
+		if replicaSet.Instances[i].UUID == instanceUUID {
+			return replicaSet.Instances[i], nil
 		}
 	}
 
 	return vshard.Instance{}, ErrEmptyResult
 }
 
-func (s *service) GetRecoveries(ctx context.Context, clusterName string, shardUUID vshard.ReplicaSetUUID) ([]orchestrator.Recovery, error) {
+func (s *service) Recoveries(ctx context.Context, clusterName string, replicaSetUUID vshard.ReplicaSetUUID) ([]orchestrator.Recovery, error) {
 	recoveries, err := s.db.GetRecoveries(ctx, clusterName)
 	if err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func (s *service) GetRecoveries(ctx context.Context, clusterName string, shardUU
 
 	resp := make([]orchestrator.Recovery, 0, len(recoveries))
 	for i := range recoveries {
-		if recoveries[i].SetUUID == shardUUID {
+		if recoveries[i].SetUUID == replicaSetUUID {
 			resp = append(resp, recoveries[i])
 		}
 	}
@@ -113,52 +113,68 @@ func (s *service) GetRecoveries(ctx context.Context, clusterName string, shardUU
 	return resp, nil
 }
 
-func (s *service) Alerts(ctx context.Context) ([]AlertInfo, error) {
+func (s *service) Alerts(ctx context.Context) (AlertsResponse, error) {
 	clusters, err := s.db.GetClusters(ctx)
 	if err != nil {
-		return nil, err
+		return AlertsResponse{}, err
 	}
 
-	resp := make([]AlertInfo, 0)
+	instanceAlertsList := make([]InstanceAlerts, 0)
+	routerAlertsList := make([]RoutersAlerts, 0)
 	for i := range clusters {
-		shard := clusters[i].Snapshot.ReplicaSets
-		for j := range shard {
-			instances := shard[j].Instances
-			for k := range instances {
-				alerts := instances[k].StorageInfo.Alerts
-				resp = append(resp, AlertInfo{
-					ClusterName: clusters[i].Name,
-					ShardUUID:   shard[j].UUID,
-					InstanceURI: instances[k].URI,
+		routerAlertsList = append(routerAlertsList, routersAlerts(clusters[i].Snapshot.Routers)...)
+		instanceAlertsList = append(instanceAlertsList, instanceAlerts(clusters[i].Name, clusters[i].Snapshot.ReplicaSets)...)
+	}
+
+	return AlertsResponse{
+		InstancesAlerts: instanceAlertsList,
+		RoutersAlerts:   routerAlertsList,
+	}, nil
+}
+
+func (s *service) ClusterAlerts(ctx context.Context, clusterName string) (AlertsResponse, error) {
+	cluster, err := s.ClusterSnapshot(ctx, clusterName)
+	if err != nil {
+		return AlertsResponse{}, err
+	}
+
+	return AlertsResponse{
+		InstancesAlerts: instanceAlerts(clusterName, cluster.ReplicaSets),
+		RoutersAlerts:   routersAlerts(cluster.Routers),
+	}, nil
+}
+
+func routersAlerts(routers []vshard.Router) []RoutersAlerts {
+	result := make([]RoutersAlerts, 0)
+	for i := range routers {
+		if len(routers[i].Info.Alerts) > 0 {
+			result = append(result, RoutersAlerts{
+				URI:    routers[i].URI,
+				Alerts: routers[i].Info.Alerts,
+			})
+		}
+	}
+
+	return result
+}
+
+func instanceAlerts(clusterName string, replicaSets []vshard.ReplicaSet) []InstanceAlerts {
+	resp := make([]InstanceAlerts, 0)
+
+	for i := range replicaSets {
+		instances := replicaSets[i].Instances
+		for j := range instances {
+			alerts := instances[j].StorageInfo.Alerts
+			if len(alerts) != 0 {
+				resp = append(resp, InstanceAlerts{
+					ClusterName: clusterName,
+					ShardUUID:   replicaSets[i].UUID,
+					InstanceURI: instances[j].URI,
 					Alerts:      alerts,
 				})
 			}
 		}
 	}
 
-	return resp, nil
-}
-
-func (s *service) ClusterAlerts(ctx context.Context, clusterName string) ([]AlertInfo, error) {
-	cluster, err := s.GetCluster(ctx, clusterName)
-	if err != nil {
-		return nil, err
-	}
-
-	resp := make([]AlertInfo, 0)
-	shards := cluster.ReplicaSets
-	for i := range shards {
-		instances := shards[i].Instances
-		for j := range instances {
-			alerts := instances[j].StorageInfo.Alerts
-			resp = append(resp, AlertInfo{
-				ClusterName: clusterName,
-				ShardUUID:   shards[i].UUID,
-				InstanceURI: instances[j].URI,
-				Alerts:      alerts,
-			})
-		}
-	}
-
-	return resp, nil
+	return resp
 }
