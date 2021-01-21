@@ -33,13 +33,13 @@ var (
 		Subsystem: "shard",
 		Name:      shardCriticalLevel,
 		Help:      "Critical level of the replica set",
-	}, []string{"cluster_name", "uuid", "master_uri"})
+	}, []string{"cluster_name", "uuid"})
 
 	shardStateGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Subsystem: "shard",
 		Name:      shardState,
 		Help:      "The state of each shard in the cluster; it will have one line for each possible state of each shard. A value of 1 means the shard is in the state specified by the state label, a value of 0 means it is not.",
-	}, []string{"cluster_name", "uuid", "master_uri", "state"})
+	}, []string{"cluster_name", "uuid", "state"})
 
 	discoveryErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Subsystem: "discovery",
@@ -95,11 +95,11 @@ func StartClusterDiscovery(clusterName string) Transaction {
 	return txn.Start()
 }
 
-func SetShardCriticalLevel(clusterName, uuid, masterURI string, level int) {
-	shardCriticalLevelGauge.WithLabelValues(clusterName, uuid, masterURI).Set(float64(level))
+func SetShardCriticalLevel(clusterName, uuid string, level int) {
+	shardCriticalLevelGauge.WithLabelValues(clusterName, uuid).Set(float64(level))
 }
 
-func SetShardState(clusterName, uuid, masterURI, state string, active bool) {
+func SetShardState(clusterName, uuid, state string, active bool) {
 	v := float64(0)
 	if active {
 		v = 1
@@ -107,7 +107,6 @@ func SetShardState(clusterName, uuid, masterURI, state string, active bool) {
 	shardStateGauge.With(prometheus.Labels{
 		"cluster_name": clusterName,
 		"uuid":         uuid,
-		"master_uri":   masterURI,
 		"state":        state,
 	}).Set(v)
 }

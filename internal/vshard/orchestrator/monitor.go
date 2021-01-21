@@ -86,7 +86,7 @@ func (m *storageMonitor) checkCluster(stream AnalysisWriteStream) {
 
 				for _, state := range ReplicaSetStateEnum {
 					active := state == analysis.State
-					metrics.SetShardState(m.cluster.Name, string(set.UUID), set.MasterURI, string(state), active)
+					metrics.SetShardState(m.cluster.Name, string(set.UUID), string(state), active)
 				}
 			}
 		}(set)

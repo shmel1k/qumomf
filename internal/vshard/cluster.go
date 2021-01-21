@@ -371,7 +371,7 @@ func (c *Cluster) Discover() {
 		ns.ReplicaSets = append(ns.ReplicaSets, set)
 
 		code, _ := set.HealthStatus()
-		metrics.SetShardCriticalLevel(c.Name, string(set.UUID), set.MasterURI, int(code))
+		metrics.SetShardCriticalLevel(c.Name, string(set.UUID), int(code))
 		c.logDiscoveredReplicaSet(set)
 	}
 
