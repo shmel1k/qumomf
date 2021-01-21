@@ -24,5 +24,4 @@ vendor/
 
 bin/
 dist/
-/sqlite.db
-/qumomf.db
+/*.db

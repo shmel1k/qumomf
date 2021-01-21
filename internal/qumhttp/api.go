@@ -1,7 +1,6 @@
 package qumhttp
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 
@@ -44,8 +43,8 @@ func NewHandler(logger zerolog.Logger, apiSrv api.Service) APIHandler {
 	}
 }
 
-func (a *apiHandler) ClusterList(w http.ResponseWriter, _ *http.Request) {
-	resp, err := a.apiSrv.ClustersList(context.Background())
+func (a *apiHandler) ClusterList(w http.ResponseWriter, r *http.Request) {
+	resp, err := a.apiSrv.ClustersList(r.Context())
 	if err != nil {
 		a.writeResponse(w, newInternalErrResponse("failed to get cluster list", err))
 		return
@@ -68,10 +67,10 @@ func (a *apiHandler) ClusterSnapshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	snap, err := a.apiSrv.ClusterSnapshot(context.Background(), reqParams.clusterName)
+	snap, err := a.apiSrv.ClusterSnapshot(r.Context(), reqParams.clusterName)
 	if err != nil {
-		if err == api.ErrEmptyResult {
-			a.writeResponse(w, newBadRequestResponse(`cluster snapshot not found`))
+		if isNotFoundTypeErr(err) {
+			a.writeResponse(w, newBadRequestResponse(parseNotFoundTypeErr(err)))
 			return
 		}
 		a.writeResponse(w, newInternalErrResponse("failed get cluster snapshot", err))
@@ -94,10 +93,10 @@ func (a *apiHandler) ShardSnapshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shard, err := a.apiSrv.ReplicaSet(context.Background(), reqParams.clusterName, reqParams.shardUUID)
+	shard, err := a.apiSrv.ReplicaSet(r.Context(), reqParams.clusterName, reqParams.shardUUID)
 	if err != nil {
-		if err == api.ErrEmptyResult {
-			a.writeResponse(w, newBadRequestResponse(`cluster or shard snapshots not found`))
+		if isNotFoundTypeErr(err) {
+			a.writeResponse(w, newBadRequestResponse(parseNotFoundTypeErr(err)))
 			return
 		}
 		a.writeResponse(w, newInternalErrResponse("failed get shard snapshot", err))
@@ -120,10 +119,10 @@ func (a *apiHandler) InstanceSnapshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	inst, err := a.apiSrv.Instance(context.Background(), reqParams.clusterName, reqParams.shardUUID, reqParams.instanceUUID)
+	inst, err := a.apiSrv.Instance(r.Context(), reqParams.clusterName, reqParams.shardUUID, reqParams.instanceUUID)
 	if err != nil {
-		if err == api.ErrEmptyResult {
-			a.writeResponse(w, newBadRequestResponse(`cluster, shard or instance snapshots not found`))
+		if isNotFoundTypeErr(err) {
+			a.writeResponse(w, newBadRequestResponse(parseNotFoundTypeErr(err)))
 			return
 		}
 		a.writeResponse(w, newInternalErrResponse("failed get instance snapshot", err))
@@ -147,7 +146,7 @@ func (a *apiHandler) ShardRecoveries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	recoveries, err := a.apiSrv.Recoveries(context.Background(), reqParams.clusterName, reqParams.shardUUID)
+	recoveries, err := a.apiSrv.Recoveries(r.Context(), reqParams.clusterName, reqParams.shardUUID)
 	if err != nil {
 		a.writeResponse(w, newInternalErrResponse("failed get shard recovery", err))
 		return
@@ -162,8 +161,8 @@ func (a *apiHandler) ShardRecoveries(w http.ResponseWriter, r *http.Request) {
 	a.writeResponse(w, newOKResponse(data))
 }
 
-func (a *apiHandler) Alerts(w http.ResponseWriter, _ *http.Request) {
-	alerts, err := a.apiSrv.Alerts(context.Background())
+func (a *apiHandler) Alerts(w http.ResponseWriter, r *http.Request) {
+	alerts, err := a.apiSrv.Alerts(r.Context())
 	if err != nil {
 		a.writeResponse(w, newInternalErrResponse("failed get alerts list", err))
 		return
@@ -186,10 +185,10 @@ func (a *apiHandler) ClusterAlerts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	alerts, err := a.apiSrv.ClusterAlerts(context.Background(), reqParams.clusterName)
+	alerts, err := a.apiSrv.ClusterAlerts(r.Context(), reqParams.clusterName)
 	if err != nil {
-		if err == api.ErrEmptyResult {
-			a.writeResponse(w, newBadRequestResponse(`cluster not found`))
+		if isNotFoundTypeErr(err) {
+			a.writeResponse(w, newBadRequestResponse(parseNotFoundTypeErr(err)))
 			return
 		}
 		a.writeResponse(w, newInternalErrResponse("failed get cluster alerts", err))
@@ -203,6 +202,23 @@ func (a *apiHandler) ClusterAlerts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.writeResponse(w, newOKResponse(data))
+}
+
+func isNotFoundTypeErr(err error) bool {
+	return err == api.ErrClusterNotFound || err == api.ErrReplicaSetNotFound || err == api.ErrInstanceNotFound
+}
+
+func parseNotFoundTypeErr(err error) string {
+	switch err {
+	case api.ErrClusterNotFound:
+		return "cluster snapshot not found"
+	case api.ErrReplicaSetNotFound:
+		return "shard snapshot not found"
+	case api.ErrInstanceNotFound:
+		return "instance snapshot not found"
+	}
+
+	return "cluster not found"
 }
 
 func (a *apiHandler) writeResponse(w http.ResponseWriter, resp response) {

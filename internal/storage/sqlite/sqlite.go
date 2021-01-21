@@ -93,9 +93,9 @@ func (s *sqlite) GetClusters(ctx context.Context) ([]storage.ClusterSnapshotResp
 	}
 
 	resp := make([]storage.ClusterSnapshotResp, 0)
-	var snapResp storage.ClusterSnapshotResp
 	data := make([]byte, 0)
 	for rows.Next() {
+		snapResp := storage.ClusterSnapshotResp{}
 		err = rows.Scan(&snapResp.Name, &data)
 		if err != nil {
 			return nil, err

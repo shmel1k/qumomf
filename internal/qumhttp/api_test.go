@@ -40,10 +40,12 @@ var (
 
 var (
 	tSnapshot = vshard.Snapshot{
-		Created:     117236231,
+		Created:     tCreatedAt,
 		Routers:     []vshard.Router{tRouter},
 		ReplicaSets: []vshard.ReplicaSet{tReplicaSet},
 	}
+
+	tCreatedAt = time.Now().Unix()
 
 	tRouter = vshard.Router{
 		URI: tRouterURI,
@@ -54,7 +56,7 @@ var (
 
 	tReplicaSet = vshard.ReplicaSet{
 		UUID:       tShardUUID,
-		MasterUUID: "ca2f08e1-bc2b-421a-b7de-e6f1fc4e6cdc",
+		MasterUUID: tInstanceUUID,
 		MasterURI:  "localhost:2021",
 		Instances:  []vshard.Instance{tInstance},
 	}
@@ -64,7 +66,7 @@ var (
 		ID:   1,
 		URI:  "test_inst",
 		StorageInfo: vshard.StorageInfo{
-			Status:      0,
+			Status:      vshard.HealthCodeGreen,
 			Replication: vshard.Replication{},
 			Bucket:      vshard.InstanceBucket{},
 			Alerts:      []vshard.Alert{tAlert},
@@ -157,6 +159,8 @@ func (a *apiSuite) TestGetClustersList() {
 		Name:         tClusterName,
 		ShardsCount:  len(tSnapshot.ReplicaSets),
 		RoutersCount: len(tSnapshot.Routers),
+		DiscoveredAt: tCreatedAt,
+		HealthLevel:  vshard.HealthLevelGreen,
 	}}), w.Body.String())
 }
 
@@ -203,14 +207,14 @@ func (a *apiSuite) TestShardSnapshot() {
 			clusterName:      tNotFoundCluster,
 			shardUUID:        tShardUUID,
 			expectedCode:     http.StatusBadRequest,
-			expectedResponse: "cluster or shard snapshots not found",
+			expectedResponse: "cluster snapshot not found",
 		},
 		{
 			name:             "Not_found_shard",
 			clusterName:      tClusterName,
 			shardUUID:        tNotFoundShardUUID,
 			expectedCode:     http.StatusBadRequest,
-			expectedResponse: "cluster or shard snapshots not found",
+			expectedResponse: "shard snapshot not found",
 		},
 	} {
 		tc := tt
@@ -243,7 +247,7 @@ func (a *apiSuite) TestInstanceSnapshot() {
 			shardUUID:        tShardUUID,
 			instanceUUID:     tInstanceUUID,
 			expectedCode:     http.StatusBadRequest,
-			expectedResponse: "cluster, shard or instance snapshots not found",
+			expectedResponse: "cluster snapshot not found",
 		},
 		{
 			name:             "Not_found_shard",
@@ -251,7 +255,7 @@ func (a *apiSuite) TestInstanceSnapshot() {
 			shardUUID:        tNotFoundShardUUID,
 			instanceUUID:     tInstanceUUID,
 			expectedCode:     http.StatusBadRequest,
-			expectedResponse: "cluster, shard or instance snapshots not found",
+			expectedResponse: "shard snapshot not found",
 		},
 		{
 			name:             "Not_found_instance",
@@ -259,7 +263,7 @@ func (a *apiSuite) TestInstanceSnapshot() {
 			shardUUID:        tShardUUID,
 			instanceUUID:     tNotFoundInstanceUUID,
 			expectedCode:     http.StatusBadRequest,
-			expectedResponse: "cluster, shard or instance snapshots not found",
+			expectedResponse: "instance snapshot not found",
 		},
 	} {
 		tc := tt
@@ -372,7 +376,7 @@ func (a *apiSuite) TestClusterAlerts() {
 		{
 			name:             "Not_found_cluster_Expected_empty_result",
 			clusterName:      tNotFoundCluster,
-			expectedResponse: "cluster not found",
+			expectedResponse: "cluster snapshot not found",
 			expectedCode:     http.StatusBadRequest,
 		},
 	} {

@@ -8,6 +8,33 @@ type Snapshot struct {
 	priorities  map[string]int
 }
 
+func (s *Snapshot) ClusterHealthLevel() HealthLevel {
+	hc := HealthCodeGreen
+	for _, replicaSet := range s.ReplicaSets {
+		gotHC, _ := replicaSet.HealthStatus()
+		if gotHC > hc {
+			hc = gotHC
+		}
+	}
+
+	return s.healthLevel(hc)
+}
+
+func (s *Snapshot) healthLevel(healthCode HealthCode) HealthLevel {
+	switch healthCode {
+	case HealthCodeGreen:
+		return HealthLevelGreen
+	case HealthCodeYellow:
+		return HealthLevelYellow
+	case HealthCodeOrange:
+		return HealthLevelOrange
+	case HealthCodeRed:
+		return HealthLevelRed
+	}
+
+	return HealthLevelUnknown
+}
+
 func (s *Snapshot) Copy() Snapshot {
 	dst := Snapshot{
 		Created:     s.Created,

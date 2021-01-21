@@ -3,9 +3,11 @@ package api
 import "github.com/shmel1k/qumomf/internal/vshard"
 
 type ClusterInfo struct {
-	Name         string `json:"name"`
-	ShardsCount  int    `json:"shards_count"`
-	RoutersCount int    `json:"routers_count"`
+	Name         string             `json:"name"`
+	ShardsCount  int                `json:"shards_count"`
+	RoutersCount int                `json:"routers_count"`
+	DiscoveredAt int64              `json:"discovered_at"`
+	HealthLevel  vshard.HealthLevel `json:"health_level"`
 }
 
 type AlertsResponse struct {

@@ -11,7 +11,9 @@ import (
 )
 
 var (
-	ErrEmptyResult = errors.New("empty result")
+	ErrClusterNotFound    = errors.New("cluster not found")
+	ErrReplicaSetNotFound = errors.New("replica set not found")
+	ErrInstanceNotFound   = errors.New("instance not found")
 )
 
 type Service interface {
@@ -46,6 +48,8 @@ func (s *service) ClustersList(ctx context.Context) ([]ClusterInfo, error) {
 			Name:         cluster.Name,
 			ShardsCount:  len(cluster.Snapshot.ReplicaSets),
 			RoutersCount: len(cluster.Snapshot.Routers),
+			DiscoveredAt: cluster.Snapshot.Created,
+			HealthLevel:  cluster.Snapshot.ClusterHealthLevel(),
 		})
 	}
 
@@ -55,7 +59,7 @@ func (s *service) ClustersList(ctx context.Context) ([]ClusterInfo, error) {
 func (s *service) ClusterSnapshot(ctx context.Context, clusterName string) (vshard.Snapshot, error) {
 	snap, err := s.db.GetClusterSnapshot(ctx, clusterName)
 	if err == sqlite.ErrEmptyResult {
-		return vshard.Snapshot{}, ErrEmptyResult
+		return vshard.Snapshot{}, ErrClusterNotFound
 	}
 
 	return snap, err
@@ -65,7 +69,7 @@ func (s *service) ReplicaSet(ctx context.Context, clusterName string, replicaSet
 	snap, err := s.db.GetClusterSnapshot(ctx, clusterName)
 	if err != nil {
 		if err == sqlite.ErrEmptyResult {
-			return vshard.ReplicaSet{}, ErrEmptyResult
+			return vshard.ReplicaSet{}, ErrClusterNotFound
 		}
 		return vshard.ReplicaSet{}, err
 	}
@@ -73,7 +77,7 @@ func (s *service) ReplicaSet(ctx context.Context, clusterName string, replicaSet
 	replicaSet, err := snap.ReplicaSet(replicaSetUUID)
 	if err != nil {
 		if err == vshard.ErrReplicaSetNotFound {
-			return vshard.ReplicaSet{}, ErrEmptyResult
+			return vshard.ReplicaSet{}, ErrReplicaSetNotFound
 		}
 
 		return vshard.ReplicaSet{}, err
@@ -94,7 +98,7 @@ func (s *service) Instance(ctx context.Context, clusterName string, replicaSetUU
 		}
 	}
 
-	return vshard.Instance{}, ErrEmptyResult
+	return vshard.Instance{}, ErrInstanceNotFound
 }
 
 func (s *service) Recoveries(ctx context.Context, clusterName string, replicaSetUUID vshard.ReplicaSetUUID) ([]orchestrator.Recovery, error) {
