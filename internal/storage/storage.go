@@ -8,8 +8,9 @@ import (
 )
 
 type Storage interface {
+	GetClusters(context.Context) ([]ClusterSnapshotResp, error)
 	SaveSnapshot(context.Context, string, vshard.Snapshot) error
 	SaveRecovery(context.Context, orchestrator.Recovery) error
-	GetClusterLastSnapshot(context.Context, string) (vshard.Snapshot, error)
+	GetClusterSnapshot(context.Context, string) (vshard.Snapshot, error)
 	GetRecoveries(context.Context, string) ([]orchestrator.Recovery, error)
 }

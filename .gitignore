@@ -24,4 +24,4 @@ vendor/
 
 bin/
 dist/
-/sqlite.db
+/*.db

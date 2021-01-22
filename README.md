@@ -176,6 +176,8 @@ Qumomf exposes several debug endpoints:
 - `/debug/health` - health check,
 - `/debug/about` - the app version and build date. 
 
+[API documentation](api/swagger.yml) for getting information about cluster states, recoveries and problems.
+
 ## Hacking
 
 Feel free to open issues and pull requests with your ideas how to improve qumomf.

@@ -72,7 +72,7 @@ func (s *storageSuite) AfterTest(_, _ string) {
 
 func (s *storageSuite) TestEmptyResult() {
 	t := s.T()
-	_, err := s.db.GetClusterLastSnapshot(dummyContext, tClusterName)
+	_, err := s.db.GetClusterSnapshot(dummyContext, tClusterName)
 	require.Equal(t, ErrEmptyResult, err)
 }
 
@@ -81,7 +81,7 @@ func (s *storageSuite) TestSaveSnapshot() {
 	err := s.db.SaveSnapshot(dummyContext, tClusterName, tSnapshot)
 	require.NoError(t, err)
 
-	snap, err := s.db.GetClusterLastSnapshot(dummyContext, tClusterName)
+	snap, err := s.db.GetClusterSnapshot(dummyContext, tClusterName)
 	require.NoError(t, err)
 	require.Equal(t, tSnapshot, snap)
 }
@@ -107,7 +107,7 @@ func (s *storageSuite) TestSaveSnapshot_ShouldNotDuplicateSnapshots() {
 		require.NoError(t, err)
 	}
 
-	snap, err := s.db.GetClusterLastSnapshot(dummyContext, tClusterName)
+	snap, err := s.db.GetClusterSnapshot(dummyContext, tClusterName)
 	require.NoError(t, err)
 	assert.Equal(t, snap.Created, lastCreatedAt)
 

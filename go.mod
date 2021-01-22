@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/google/uuid v1.1.2 // indirect
+	github.com/gorilla/mux v1.8.0
 	github.com/mattn/go-sqlite3 v1.14.5
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.5.1
@@ -15,6 +16,7 @@ require (
 	github.com/viciious/go-tarantool v0.0.0-20190828171136-ede812c03707
 	golang.org/x/sys v0.0.0-20200122134326-e047566fdf82
 	google.golang.org/appengine v1.6.5 // indirect
+	google.golang.org/genproto v0.0.0-20210113195801-ae06605f4595 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/vmihailenco/msgpack.v2 v2.9.1 // indirect
 	gopkg.in/yaml.v2 v2.2.8

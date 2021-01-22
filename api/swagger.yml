@@ -1,0 +1,176 @@
+openapi: 3.0.0
+info:
+  title: QUMOMF API
+  version: 0.0.1
+
+paths:
+  /api/v0/snapshots:
+    get:
+      summary: "Get list of clusters"
+      responses:
+        '200':
+          description: 'Request succefully finished'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterInfo'
+        '500':
+          description: 'Internal error'
+
+  /api/v0/snapshots/{cluster_name}:
+    get:
+      summary: "Get all information about cluster"
+      parameters:
+        - $ref: '#/components/parameters/cluster_name'
+      responses:
+        '200':
+          description: 'Request succefully finished'
+        '400':
+          description: 'Invalid request'
+        '500':
+          description: 'Internal error'
+
+  /api/v0/snapshots/{cluster_name}/{shard_uuid}:
+    get:
+      summary: "Get all information about shard"
+      parameters:
+        - $ref: '#/components/parameters/cluster_name'
+        - $ref: '#/components/parameters/shard_uuid'
+      responses:
+        '200':
+          description: 'Request succefully finished'
+        '400':
+          description: 'Invalid request'
+        '500':
+          description: 'Internal error'
+  /api/v0/snapshots/{cluster_name}/{shard_uuid}/{instance_uuid}:
+    get:
+      summary: "Get all information about instance"
+      parameters:
+        - $ref: '#/components/parameters/cluster_name'
+        - $ref: '#/components/parameters/shard_uuid'
+        - $ref: '#/components/parameters/instance_uuid'
+      responses:
+        '200':
+          description: 'Request succefully finished'
+        '400':
+          description: 'Invalid request'
+        '500':
+          description: 'Internal error'
+
+  /api/v0/recoveries/{cluster_name}/{shard_uuid}:
+    get:
+      summary: "Get all recoceries for shard"
+      parameters:
+        - $ref: '#/components/parameters/cluster_name'
+        - $ref: '#/components/parameters/shard_uuid'
+      responses:
+        '200':
+          description: 'Request succefully finished'
+        '400':
+          description: 'Invalid request'
+        '500':
+          description: 'Internal error'
+  /api/v0/alerts:
+    get:
+      summary: "Get all active problems"
+      responses:
+        '200':
+          description: 'Request succefully finished'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsResponse'
+        '500':
+          description: 'Internal error'
+  /api/v0/alerts/{cluster_name}:
+    get:
+      summary: "Get all active problems for cluster"
+      parameters:
+        - $ref: '#/components/parameters/cluster_name'
+      responses:
+        '200':
+          description: 'Request succefully finished'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsResponse'
+        '400':
+          description: 'Invalid request'
+        '500':
+          description: 'Internal error'
+components:
+  schemas:
+    ClusterInfo:
+      type: array
+      items:
+        properties:
+          name:
+            type: string
+            example: qumomf_sandbox
+          shards_count:
+            type: integer
+            example: 2
+          routers_count:
+            type: integer
+            example: 1
+          discovered_at:
+            type: integer
+            example: 1611231096
+          health_level:
+            type: string
+            example: green
+    AlertsResponse:
+      properties:
+        instances_alerts:
+          $ref: '#/components/schemas/InstanceAlerts'
+        routers_alerts:
+          $ref: '#/components/schemas/RoutersAlerts'
+    InstanceAlerts:
+      properties:
+        cluster_name:
+          type: string
+        shard_uuid:
+          type: string
+        instance_uri:
+          type: string
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+    RoutersAlerts:
+      properties:
+        uri:
+          type: string
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+    Alert:
+      properties:
+        Type:
+          type: string
+        Description:
+          type: string
+  parameters:
+    cluster_name:
+      in: path
+      name: cluster_name
+      schema:
+        type: string
+      required: true
+      description: Cluster name
+    shard_uuid:
+      in: path
+      name: shard_uuid
+      schema:
+        type: string
+      required: true
+      description: Shard uuid
+    instance_uuid:
+      in: path
+      name: instance_uuid
+      schema:
+        type: string
+      required: true
+      description: Instance uuid

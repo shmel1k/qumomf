@@ -13,10 +13,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/shmel1k/qumomf/internal/api"
+
+	"github.com/gorilla/mux"
+
 	"github.com/shmel1k/qumomf/internal/storage"
 	"github.com/shmel1k/qumomf/internal/storage/sqlite"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/unix"
@@ -45,7 +48,14 @@ func main() {
 	}
 
 	logger := initLogger(cfg)
-	server := initHTTPServer(cfg.Qumomf.Port)
+
+	db, err := newStorage(cfg)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to init persistent storage")
+	}
+
+	service := api.NewService(db)
+	server := initHTTPServer(logger, service, cfg.Qumomf.Port)
 
 	logger.Info().Msgf("Starting qumomf %s, commit %s, built at %s", version, commit, buildDate)
 
@@ -60,11 +70,6 @@ func main() {
 
 	if len(cfg.Clusters) == 0 {
 		logger.Warn().Msg("No clusters are found in the configuration")
-	}
-
-	db, err := newStorage(cfg)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to init persistent storage")
 	}
 
 	qCoordinator := coordinator.New(logger, db)
@@ -156,17 +161,15 @@ func newRollingLogFile(cfg *config.Logging) (io.Writer, error) {
 	}, nil
 }
 
-func initHTTPServer(port string) *http.Server {
-	server := &http.Server{
+func initHTTPServer(logger zerolog.Logger, service api.Service, port string) *http.Server {
+	r := mux.NewRouter()
+	qumhttp.RegisterDebugHandlers(r, version, commit, buildDate)
+	qumhttp.RegisterAPIHandlers(r, qumhttp.NewHandler(logger, service))
+
+	return &http.Server{
 		Addr:         port,
+		Handler:      r,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
 	}
-
-	// Init routing.
-	http.Handle("/debug/metrics", promhttp.Handler())
-	http.Handle("/debug/health", qumhttp.HealthHandler())
-	http.Handle("/debug/about", qumhttp.AboutHandler(version, commit, buildDate))
-
-	return server
 }
