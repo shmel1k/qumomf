@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/viciious/go-tarantool"
 
+	"github.com/shmel1k/qumomf/internal/metrics"
 	"github.com/shmel1k/qumomf/internal/quorum"
 	"github.com/shmel1k/qumomf/internal/util"
 	"github.com/shmel1k/qumomf/internal/vshard"
@@ -158,6 +159,7 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 	}
 
 	f.cluster.StartRecovery()
+	metrics.RecordRecoveryEvent(f.cluster.Name, string(analysis.Set.UUID), string(analysis.State))
 	logger.Warn().Msg(desc)
 	logger.Info().Msgf("Cluster snapshot before recovery: %s", f.cluster.Dump())
 	recoveries := recvFunc(ctx, analysis)

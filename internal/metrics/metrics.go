@@ -1,12 +1,23 @@
 package metrics
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 const (
 	discoveryInstanceDurations = "instance_durations"
 	discoveryClusterDurations  = "cluster_durations"
 	shardCriticalLevel         = "critical_level"
 	shardState                 = "state"
+	recoveryEvent              = "recovery_event"
+)
+
+const (
+	labelClusterName = "cluster_name"
+	labelHostName    = "hostname"
+	labelURI         = "uri"
+	labelShardState  = "shard_state"
+	labelShardUUID   = "shard_uuid"
 )
 
 var (
@@ -20,42 +31,58 @@ var (
 		Name:      discoveryInstanceDurations,
 		Help:      "Instance discovery latencies in seconds",
 		Buckets:   discoveryInstanceDurationsBuckets,
-	}, []string{"cluster_name", "hostname"})
+	}, []string{labelClusterName, labelHostName})
 
 	discoveryClusterDurationsSum = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Subsystem: "discovery",
 		Name:      discoveryClusterDurations,
 		Help:      "Cluster discovery latencies in seconds",
 		Buckets:   discoveryClusterDurationsBuckets,
-	}, []string{"cluster_name"})
+	}, []string{labelClusterName})
 
 	shardCriticalLevelGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Subsystem: "shard",
 		Name:      shardCriticalLevel,
 		Help:      "Critical level of the replica set",
-	}, []string{"cluster_name", "uuid"})
+	}, []string{labelClusterName, labelShardUUID})
 
 	shardStateGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Subsystem: "shard",
 		Name:      shardState,
 		Help:      "The state of each shard in the cluster; it will have one line for each possible state of each shard. A value of 1 means the shard is in the state specified by the state label, a value of 0 means it is not.",
-	}, []string{"cluster_name", "uuid", "state"})
+	}, []string{labelClusterName, labelShardUUID, labelShardState})
 
 	discoveryErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Subsystem: "discovery",
 		Name:      "errors",
 		Help:      "Errors that happen during discovery process",
-	}, []string{"cluster_name", "uri"})
+	}, []string{labelClusterName, labelURI})
+
+	recoveryEvents = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Subsystem: "orchestrator",
+		Name:      recoveryEvent,
+		Help:      "Registered shard recovery events",
+	}, []string{labelClusterName, labelShardUUID, labelShardState})
 )
 
 func init() {
-	discoveryErrors.With(prometheus.Labels{"cluster_name": "", "uri": ""}).Add(0)
+	recoveryEvents.With(prometheus.Labels{
+		labelClusterName: "",
+		labelShardUUID:   "",
+		labelShardState:  "",
+	}).Add(0)
+	discoveryErrors.With(prometheus.Labels{
+		labelClusterName: "",
+		labelURI:         "",
+	}).Add(0)
+
 	prometheus.MustRegister(
 		discoveryInstanceDurationsSum,
 		discoveryClusterDurationsSum,
 		shardCriticalLevelGauge,
 		shardStateGauge,
 		discoveryErrors,
+		recoveryEvents,
 	)
 }
 
@@ -105,15 +132,23 @@ func SetShardState(clusterName, uuid, state string, active bool) {
 		v = 1
 	}
 	shardStateGauge.With(prometheus.Labels{
-		"cluster_name": clusterName,
-		"uuid":         uuid,
-		"state":        state,
+		labelClusterName: clusterName,
+		labelShardUUID:   uuid,
+		labelShardState:  state,
 	}).Set(v)
 }
 
 func RecordDiscoveryError(clusterName, uri string) {
 	discoveryErrors.With(prometheus.Labels{
-		"cluster_name": clusterName,
-		"uri":          uri,
+		labelClusterName: clusterName,
+		labelURI:         uri,
+	}).Inc()
+}
+
+func RecordRecoveryEvent(clusterName, shardUUID, state string) {
+	recoveryEvents.With(prometheus.Labels{
+		labelClusterName: clusterName,
+		labelShardUUID:   shardUUID,
+		labelShardState:  state,
 	}).Inc()
 }
