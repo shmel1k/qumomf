@@ -66,11 +66,6 @@ var (
 )
 
 func init() {
-	recoveryEvents.With(prometheus.Labels{
-		labelClusterName: "",
-		labelShardUUID:   "",
-		labelShardState:  "",
-	}).Add(0)
 	discoveryErrors.With(prometheus.Labels{
 		labelClusterName: "",
 		labelURI:         "",
