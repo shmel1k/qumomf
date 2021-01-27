@@ -149,6 +149,7 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 		Str("master_uri", analysis.Set.MasterURI).
 		Logger()
 	logger.WithLevel(f.sampler.sample(analysis)).Str("analysis", analysis.String()).Msg("checkAndRecover")
+	metrics.RecordDiscoveredShardState(f.cluster.Name, string(analysis.Set.UUID), string(analysis.State))
 
 	recvFunc, desc := f.getCheckAndRecoveryFunc(analysis.State)
 	if recvFunc == nil {
@@ -159,7 +160,6 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 	}
 
 	f.cluster.StartRecovery()
-	metrics.RecordRecoveryEvent(f.cluster.Name, string(analysis.Set.UUID), string(analysis.State))
 	logger.Warn().Msg(desc)
 	logger.Info().Msgf("Cluster snapshot before recovery: %s", f.cluster.Dump())
 	recoveries := recvFunc(ctx, analysis)

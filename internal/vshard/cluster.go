@@ -292,7 +292,7 @@ func (c *Cluster) Discover() {
 	conn := c.Connector(router.URI)
 	resp := conn.Exec(ctx, vshardRouterInfoQuery)
 	if resp.Error != nil {
-		metrics.RecordDiscoveryError(c.Name, router.URI)
+		metrics.RecordDiscoveryError()
 		c.logger.
 			Err(resp.Error).
 			Str("URI", router.URI).
@@ -302,7 +302,7 @@ func (c *Cluster) Discover() {
 
 	updatedRI, err := ParseRouterInfo(resp.Data)
 	if err != nil {
-		metrics.RecordDiscoveryError(c.Name, router.URI)
+		metrics.RecordDiscoveryError()
 		c.logger.Err(err).
 			Str("URI", router.URI).
 			Msg("Failed to discover the topology of the cluster using router")
@@ -446,7 +446,7 @@ func (c *Cluster) discoverInstance(ctx context.Context, inst *Instance) {
 	conn := c.Connector(inst.URI)
 	resp := conn.Exec(ctx, vshardInstanceInfoQuery)
 	if resp.Error != nil {
-		metrics.RecordDiscoveryError(c.Name, inst.URI)
+		metrics.RecordDiscoveryError()
 		c.logger.Err(resp.Error).
 			Str("URI", inst.URI).
 			Str("UUID", string(inst.UUID)).
@@ -457,7 +457,7 @@ func (c *Cluster) discoverInstance(ctx context.Context, inst *Instance) {
 
 	info, err := ParseInstanceInfo(resp.Data)
 	if err != nil {
-		metrics.RecordDiscoveryError(c.Name, inst.URI)
+		metrics.RecordDiscoveryError()
 		c.logger.Err(err).
 			Str("URI", inst.URI).
 			Str("UUID", string(inst.UUID)).

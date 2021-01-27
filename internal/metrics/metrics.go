@@ -9,7 +9,7 @@ const (
 	discoveryClusterDurations  = "cluster_durations"
 	shardCriticalLevel         = "critical_level"
 	shardState                 = "state"
-	recoveryEvent              = "recovery_event"
+	shardStateEvent            = "shard_state_event"
 )
 
 const (
@@ -52,32 +52,28 @@ var (
 		Help:      "The state of each shard in the cluster; it will have one line for each possible state of each shard. A value of 1 means the shard is in the state specified by the state label, a value of 0 means it is not.",
 	}, []string{labelClusterName, labelShardUUID, labelShardState})
 
-	discoveryErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
+	discoveryErrors = prometheus.NewCounter(prometheus.CounterOpts{
 		Subsystem: "discovery",
 		Name:      "errors",
 		Help:      "Errors that happen during discovery process",
-	}, []string{labelClusterName, labelURI})
+	})
 
-	recoveryEvents = prometheus.NewCounterVec(prometheus.CounterOpts{
+	shardStateCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Subsystem: "orchestrator",
-		Name:      recoveryEvent,
-		Help:      "Registered shard recovery events",
+		Name:      shardStateEvent,
+		Help:      "Discovered shard state event",
 	}, []string{labelClusterName, labelShardUUID, labelShardState})
 )
 
 func init() {
-	discoveryErrors.With(prometheus.Labels{
-		labelClusterName: "",
-		labelURI:         "",
-	}).Add(0)
-
+	discoveryErrors.Add(0)
 	prometheus.MustRegister(
 		discoveryInstanceDurationsSum,
 		discoveryClusterDurationsSum,
 		shardCriticalLevelGauge,
 		shardStateGauge,
 		discoveryErrors,
-		recoveryEvents,
+		shardStateCounter,
 	)
 }
 
@@ -133,15 +129,12 @@ func SetShardState(clusterName, uuid, state string, active bool) {
 	}).Set(v)
 }
 
-func RecordDiscoveryError(clusterName, uri string) {
-	discoveryErrors.With(prometheus.Labels{
-		labelClusterName: clusterName,
-		labelURI:         uri,
-	}).Inc()
+func RecordDiscoveryError() {
+	discoveryErrors.Inc()
 }
 
-func RecordRecoveryEvent(clusterName, shardUUID, state string) {
-	recoveryEvents.With(prometheus.Labels{
+func RecordDiscoveredShardState(clusterName, shardUUID, state string) {
+	shardStateCounter.With(prometheus.Labels{
 		labelClusterName: clusterName,
 		labelShardUUID:   shardUUID,
 		labelShardState:  state,
