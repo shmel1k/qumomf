@@ -15,7 +15,6 @@ const (
 const (
 	labelClusterName = "cluster_name"
 	labelHostName    = "hostname"
-	labelURI         = "uri"
 	labelShardState  = "shard_state"
 	labelShardUUID   = "shard_uuid"
 )
