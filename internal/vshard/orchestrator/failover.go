@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/viciious/go-tarantool"
 
+	"github.com/shmel1k/qumomf/internal/metrics"
 	"github.com/shmel1k/qumomf/internal/quorum"
 	"github.com/shmel1k/qumomf/internal/util"
 	"github.com/shmel1k/qumomf/internal/vshard"
@@ -148,6 +149,7 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 		Str("master_uri", analysis.Set.MasterURI).
 		Logger()
 	logger.WithLevel(f.sampler.sample(analysis)).Str("analysis", analysis.String()).Msg("checkAndRecover")
+	metrics.RecordDiscoveredShardState(f.cluster.Name, string(analysis.Set.UUID), string(analysis.State))
 
 	recvFunc, desc := f.getCheckAndRecoveryFunc(analysis.State)
 	if recvFunc == nil {
