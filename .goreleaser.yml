@@ -4,18 +4,17 @@ before:
 
 builds:
   - env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
     main: ./cmd/qumomf/main.go
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.buildDate={{.Date}}
+    goarch:
+      - amd64
+    goos:
+      - linux
 
 archives:
-  - replacements:
-      darwin: Darwin
-      linux: Linux
-      386: i386
-      amd64: x86_64
-    files:
+  - files:
       - LICENSE
       - README.md
       - config/*
