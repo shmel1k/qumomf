@@ -11,7 +11,7 @@ require (
 	github.com/rs/zerolog v1.18.0
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/stretchr/testify v1.4.0
-	github.com/tarantool/go-tarantool v0.0.0-20191229181800-f4ece3508d87
+	github.com/tarantool/go-tarantool v0.0.0-20191229181800-f4ece3508d87 // indirect
 	github.com/tinylib/msgp v1.1.1 // indirect
 	github.com/viciious/go-tarantool v0.0.0-20190828171136-ede812c03707
 	golang.org/x/sys v0.0.0-20200122134326-e047566fdf82

@@ -53,6 +53,8 @@ type ReplicationAnalysis struct {
 	CountReplicatingReplicas    int // Total number of replicas confirmed replication
 	CountInconsistentVShardConf int // Total number of replicas with other than master vshard configuration
 	State                       ReplicaSetState
+	// DeadFollowers is a list with followers that are not currently connected to leader.
+	DeadFollowers []string
 }
 
 func (a ReplicationAnalysis) String() string {

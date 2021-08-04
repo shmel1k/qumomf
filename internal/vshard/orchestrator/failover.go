@@ -154,7 +154,9 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 	recvFunc, desc := f.getCheckAndRecoveryFunc(analysis.State)
 	if recvFunc == nil {
 		if desc != "" {
-			logger.Warn().Msg(desc)
+			logger.Warn().
+				Strs("dead_followers", analysis.DeadFollowers).
+				Msg(desc)
 		}
 		return
 	}
