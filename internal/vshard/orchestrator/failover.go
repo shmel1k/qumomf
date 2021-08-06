@@ -162,7 +162,9 @@ func (f *failover) checkAndRecover(ctx context.Context, analysis *ReplicationAna
 	}
 
 	f.cluster.StartRecovery()
-	logger.Warn().Msg(desc)
+	logger.Warn().
+		Strs("dead_followers", analysis.DeadFollowers).
+		Msg(desc)
 	logger.Info().Msgf("Cluster snapshot before recovery: %s", f.cluster.Dump())
 	recoveries := recvFunc(ctx, analysis)
 	for _, recv := range recoveries {
